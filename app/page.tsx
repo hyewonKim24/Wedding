@@ -1,12 +1,91 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
-import { Play, Pause, MapPin, Calendar, Heart, Send } from 'lucide-react';
+import { Play, Pause, MapPin, Calendar, Heart, Send, Plane } from 'lucide-react';
 
 // ─── 바코드 ───────────────────────────────────────────────
 const BARCODE = [3,1,2,3,1,3,2,1,3,2,1,2,3,1,2,1,3,2,3,1,2,3,1,2,1,3,2,1,3,1,2,3,2,1,3,2,1,2,3,1,2,1,3,2];
 const BAR_H   = [100,60,100,75,100,55,100,80,65,100,70,100,55,90,100,60,100,75,50,100,80,100,65,55,100,70,100,60,80,100,55,100,75,100,60,85,100,55,100,70,60,100,80,100];
+
+// ─── 갤러리 사진 (URL만 추가하면 자동으로 표시됩니다) ──────
+const GALLERY_PHOTOS = [
+  'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=600&q=80',
+  'https://images.unsplash.com/photo-1606800052052-a08af7148866?w=600&q=80',
+  'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=600&q=80',
+  'https://images.unsplash.com/photo-1583939000340-690624471565?w=600&q=80',
+  'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=600&q=80',
+  'https://images.unsplash.com/photo-1469371670807-013ccf25f16a?w=600&q=80',
+  'https://images.unsplash.com/photo-1591604021695-0c69b7c05981?w=600&q=80',
+  'https://images.unsplash.com/photo-1550005809-91ad75fb315f?w=600&q=80',
+];
+
+// ─── 꽃잎 & 화이트데이 파티클 ────────────────────────────
+const PETAL_COLORS = [
+  'rgba(252,231,243,0.75)',  // pink-100
+  'rgba(255,255,255,0.80)',  // white
+  'rgba(254,205,211,0.70)',  // rose-200
+  'rgba(255,228,230,0.65)',  // rose-100
+  'rgba(253,242,248,0.80)',  // pink-50
+];
+
+function FallingPetals() {
+  const particles = useMemo(() => Array.from({ length: 32 }, (_, i) => ({
+    id: i,
+    x: Math.random() * 100,
+    duration: Math.random() * 8 + 10,
+    delay: Math.random() * 12,
+    size: Math.random() * 9 + 5,
+    drift: Math.random() * 120 - 60,
+    rotateStart: Math.random() * 360,
+    rotateEnd: Math.random() * 360 + (Math.random() > 0.5 ? 360 : -360),
+    color: PETAL_COLORS[i % PETAL_COLORS.length],
+    isHeart: i % 6 === 0,
+    isBig: i % 9 === 0,
+  })), []);
+
+  return (
+    <div className="fixed inset-0 pointer-events-none z-[1] overflow-hidden">
+      {particles.map((p) => (
+        <motion.div
+          key={p.id}
+          className="absolute"
+          style={{ left: `${p.x}%`, top: -20 }}
+          animate={{
+            y: '115vh',
+            x: p.drift,
+            rotate: [p.rotateStart, p.rotateEnd],
+            opacity: [0, 0.9, 0.9, 0],
+          }}
+          transition={{
+            duration: p.duration,
+            repeat: Infinity,
+            delay: p.delay,
+            ease: 'linear',
+            times: [0, 0.08, 0.88, 1],
+          }}
+        >
+          {p.isHeart ? (
+            <Heart
+              size={p.isBig ? p.size + 4 : p.size}
+              fill="currentColor"
+              className="text-rose-300"
+              style={{ opacity: 0.55 }}
+            />
+          ) : (
+            <div style={{
+              width: p.size * 0.65,
+              height: p.size,
+              borderRadius: '50% 50% 50% 0',
+              background: p.color,
+              boxShadow: '0 1px 3px rgba(244,63,94,0.08)',
+            }} />
+          )}
+        </motion.div>
+      ))}
+    </div>
+  );
+}
 
 // ─── 섹션 레이블 ──────────────────────────────────────────
 function SectionLabel({ children }: { children: string }) {
@@ -18,7 +97,7 @@ function TicketDivider() {
   return (
     <div className="flex items-center gap-3 py-1">
       <div className="flex-1 border-t border-dashed border-gray-200" />
-      <span className="text-rose-300 text-xs rotate-90 leading-none">✈</span>
+      <Plane size={11} className="text-rose-300 rotate-90 flex-shrink-0" fill="currentColor" strokeWidth={0} />
       <div className="flex-1 border-t border-dashed border-gray-200" />
     </div>
   );
@@ -197,14 +276,15 @@ function FlyingPlane() {
       </motion.div>
       {/* 비행기 */}
       <motion.div
-        className="absolute -top-0.5 text-rose-400"
+        className="absolute -top-1 text-rose-400 drop-shadow-sm"
         style={{ x: planeX, opacity }}
       >
-        <motion.span
-          className="text-[22px] inline-block drop-shadow-sm"
+        <motion.div
           animate={{ y: [0, -3, 0, 3, 0] }}
           transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
-        >✈</motion.span>
+        >
+          <Plane size={20} fill="currentColor" strokeWidth={0} />
+        </motion.div>
       </motion.div>
     </div>
   );
@@ -420,139 +500,204 @@ export default function WeddingInvitation() {
 
       <main className="relative min-h-screen bg-white text-gray-800 font-sans overflow-x-hidden">
         {rsvpOpen && <RsvpModal onClose={() => setRsvpOpen(false)} />}
+        <FallingPetals />
         <FlyingPlane />
         <DynamicBGM />
 
-        {/* ── HERO ─────────────────────────────────────── */}
-        <section className="relative min-h-screen flex flex-col items-center justify-center z-10 px-6 text-center">
+        {/* ══ HERO ════════════════════════════════════════ */}
+        <section className="relative min-h-screen flex flex-col items-center justify-center z-10 px-6">
+
+          {/* 배경 연도 워터마크 */}
+          <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none select-none">
+            <span className="text-[38vw] font-black leading-none tracking-tighter"
+              style={{ color: 'rgba(17,24,39,0.025)' }}>2027</span>
+          </div>
           <div className="absolute inset-0 pointer-events-none"
-            style={{ background: 'radial-gradient(ellipse at 50% 30%, rgba(244,63,94,0.05) 0%, transparent 60%)' }} />
+            style={{ background: 'radial-gradient(ellipse at 50% 55%, rgba(244,63,94,0.04) 0%, transparent 60%)' }} />
 
-          <motion.div className="w-full max-w-sm mx-auto"
-            initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1.2, delay: 0.2 }}>
+          <motion.div className="w-full max-w-[340px] mx-auto relative"
+            initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1.1, delay: 0.15 }}>
 
-            <div className="flex items-center justify-center gap-2 mb-10">
-              <div className="h-px w-10 bg-gray-200" />
-              <span className="text-[9px] tracking-[0.4em] text-rose-400 uppercase">Wedding Air · WD-0314</span>
-              <div className="h-px w-10 bg-gray-200" />
+            {/* 항공편 배지 */}
+            <div className="flex items-center gap-3 mb-12 justify-center">
+              <div className="h-px flex-1" style={{ background: 'linear-gradient(to right, transparent, #e5e7eb)' }} />
+              <div className="flex items-center gap-1.5 px-3.5 py-1.5 border border-gray-100 rounded-full bg-white shadow-sm">
+                <Plane size={11} className="text-rose-400" fill="currentColor" strokeWidth={0} />
+                <span className="text-[8px] tracking-[0.32em] text-gray-400">WEDDING AIR · WD-0314</span>
+              </div>
+              <div className="h-px flex-1" style={{ background: 'linear-gradient(to left, transparent, #e5e7eb)' }} />
             </div>
 
-            <p className="text-[10px] tracking-[0.35em] text-gray-400 uppercase mb-6">We Are Getting Married</p>
+            {/* 이름 — 신랑 × 신부 나란히 */}
+            <div className="flex items-stretch justify-center gap-0 mb-6">
 
-            <h1 className="text-[46px] font-thin tracking-[0.12em] text-gray-800 leading-tight mb-1">장욱태</h1>
-            <p className="text-rose-400 text-xl mb-1 tracking-widest font-light">×</p>
-            <h1 className="text-[46px] font-thin tracking-[0.12em] text-gray-800 leading-tight mb-12">김혜원</h1>
+              {/* 신랑 */}
+              <motion.div className="flex-1 text-center pr-5 border-r border-gray-100"
+                initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.9, delay: 0.4 }}>
+                <p className="text-[13px] font-light tracking-[0.15em] text-gray-600 mb-0.5">신랑</p>
+                <p className="text-[7.5px] tracking-[0.32em] text-gray-400 mb-3">GROOM</p>
+                <h1 className="text-[38px] font-extralight tracking-[0.06em] text-gray-800 leading-none mb-2">장욱태</h1>
+                <p className="text-[8px] tracking-[0.22em] text-gray-400">WOOKTAE JANG</p>
+              </motion.div>
+
+              {/* 구분선 */}
+              <div className="flex flex-col items-center justify-center px-4 gap-1.5">
+                <div className="w-px h-5 bg-gradient-to-b from-transparent via-rose-200 to-transparent" />
+                <span className="text-rose-300 text-[18px] leading-none font-light">×</span>
+                <div className="w-px h-5 bg-gradient-to-b from-transparent via-rose-200 to-transparent" />
+              </div>
+
+              {/* 신부 */}
+              <motion.div className="flex-1 text-center pl-5 border-l border-gray-100"
+                initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.9, delay: 0.4 }}>
+                <p className="text-[13px] font-light tracking-[0.15em] text-gray-600 mb-0.5">신부</p>
+                <p className="text-[7.5px] tracking-[0.32em] text-gray-400 mb-3">BRIDE</p>
+                <h1 className="text-[38px] font-extralight tracking-[0.06em] text-gray-800 leading-none mb-2">김혜원</h1>
+                <p className="text-[8px] tracking-[0.22em] text-gray-400">HYEWON KIM</p>
+              </motion.div>
+            </div>
+
+            {/* 날짜 구분선 + 한글 문구 */}
+            <div className="my-8 text-center">
+              <p className="text-[15px] font-light tracking-[0.2em] text-gray-600 mb-3">저희 결혼합니다</p>
+              <div className="relative flex items-center">
+                <div className="flex-1 border-t border-dashed" style={{ borderColor: '#efefef' }} />
+                <span className="mx-4 text-[9px] tracking-[0.3em] text-gray-400 whitespace-nowrap">2027 · 03 · 14</span>
+                <div className="flex-1 border-t border-dashed" style={{ borderColor: '#efefef' }} />
+              </div>
+            </div>
 
             {/* 정보 카드 */}
-            <div className="grid grid-cols-3 divide-x divide-gray-100 bg-gray-50/80 rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+            <div className="grid grid-cols-3 rounded-2xl border border-gray-100 overflow-hidden bg-[#FAFAFA] divide-x divide-gray-100 shadow-sm">
               {[
-                { label: 'DATE',  value: '14 MAR', sub: '2027'    },
-                { label: 'TIME',  value: '14:10',  sub: 'SUNDAY'  },
-                { label: 'GATE',  value: 'LOVE',   sub: 'SEAT 01A', accent: true },
+                { label: 'FLIGHT', value: 'WD-0314', sub: 'WEDDING AIR', accent: false },
+                { label: 'TIME',   value: '14:10',   sub: 'SUNDAY',      accent: false },
+                { label: 'GATE',   value: 'LOVE',    sub: 'SEAT · 01A',  accent: true  },
               ].map(({ label, value, sub, accent }) => (
-                <div key={label} className="py-4 px-2 text-center">
-                  <p className="text-[7px] tracking-[0.3em] text-gray-400 mb-1.5">{label}</p>
-                  <p className={`text-[15px] font-bold tracking-wider ${accent ? 'text-rose-400' : 'text-gray-800'}`}>{value}</p>
-                  <p className="text-[8px] tracking-widest text-gray-400 mt-0.5">{sub}</p>
+                <div key={label} className="py-4 px-1.5 text-center">
+                  <p className="text-[6.5px] tracking-[0.28em] text-gray-400 mb-1.5">{label}</p>
+                  <p className={`text-[12px] font-bold tracking-wide ${accent ? 'text-rose-400' : 'text-gray-800'}`}>{value}</p>
+                  <p className="text-[7px] tracking-[0.15em] text-gray-400 mt-1">{sub}</p>
                 </div>
               ))}
             </div>
 
-            <motion.div className="mt-10 flex justify-center"
-              animate={{ y: [0, 7, 0] }} transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}>
-              <div className="w-px h-10 bg-gradient-to-b from-rose-300/60 to-transparent" />
+            {/* 스크롤 힌트 */}
+            <motion.div className="mt-10 flex flex-col items-center gap-2"
+              animate={{ opacity: [0.35, 1, 0.35] }} transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}>
+              <motion.div className="w-px bg-gradient-to-b from-rose-300/50 to-transparent"
+                animate={{ height: [24, 36, 24] }} transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }} />
+              <p className="text-[7px] tracking-[0.4em] text-gray-400">SCROLL</p>
             </motion.div>
+
           </motion.div>
         </section>
 
-        {/* ── 인사말 ───────────────────────────────────── */}
-        <section className="py-6 px-6 z-10 relative">
+        {/* ══ 인사말 ═══════════════════════════════════════ */}
+        <section className="px-6 z-10 relative">
           <div className="max-w-sm mx-auto">
             <TicketDivider />
-            <motion.div className="text-center py-16"
+            <motion.div className="py-20 text-center"
               initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-80px' }} transition={{ duration: 0.9 }}>
               <SectionLabel>Message</SectionLabel>
-              <Heart className="mx-auto text-rose-300 mb-7" size={20} fill="currentColor" />
-              <p className="leading-[2.1] text-gray-500 font-light whitespace-pre-line text-[14px] tracking-wide">
+              <div className="w-8 h-px bg-rose-200 mx-auto mb-6" />
+              <p className="leading-[2.2] text-gray-500 font-light whitespace-pre-line text-[14px]">
                 {`오랜 시간 한 곳을 바라보며 걸어온 두 사람,\n이제 그 발걸음을 나란히 하려 합니다.\n\n바쁘시겠지만 참석하시어\n저희의 새로운 시작을 축복해 주시면\n더없는 기쁨으로 간직하겠습니다.`}
               </p>
+              <div className="w-8 h-px bg-rose-200 mx-auto mt-6" />
             </motion.div>
             <TicketDivider />
           </div>
         </section>
 
-        {/* ── 갤러리 ───────────────────────────────────── */}
+        {/* ══ 갤러리 ═══════════════════════════════════════ */}
         <section className="py-16 px-5 z-10 relative bg-[#FBF9F7]">
-          <div className="max-w-lg mx-auto">
-            <div className="text-center mb-10"><SectionLabel>Gallery</SectionLabel></div>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                ['https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=500&q=80',
-                 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=500&q=80'],
-                ['https://images.unsplash.com/photo-1606800052052-a08af7148866?w=500&q=80',
-                 'https://images.unsplash.com/photo-1583939000340-690624471565?w=500&q=80'],
-              ].map((col, ci) => (
-                <div key={ci} className="grid gap-2">
-                  {col.map((src, i) => (
-                    <motion.div key={i} whileHover={{ scale: 1.02 }} transition={{ duration: 0.3 }}
-                      className="overflow-hidden rounded-xl border border-gray-100 shadow-sm">
-                      <img className="h-auto w-full object-cover" src={src} alt={`wedding ${ci*2+i+1}`} />
-                    </motion.div>
-                  ))}
-                </div>
+          <div className="max-w-sm mx-auto">
+            <div className="text-center mb-8">
+              <SectionLabel>Gallery</SectionLabel>
+              <p className="text-[10px] tracking-[0.2em] text-gray-400 mt-1">
+                {GALLERY_PHOTOS.length} PHOTOS
+              </p>
+            </div>
+            {/* 매소너리 그리드 — GALLERY_PHOTOS 배열에 URL 추가하면 자동 표시 */}
+            <div style={{ columns: 2, columnGap: '8px' }}>
+              {GALLERY_PHOTOS.map((src, i) => (
+                <motion.div
+                  key={i}
+                  className="mb-2 break-inside-avoid overflow-hidden rounded-xl border border-white/60 shadow-sm"
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: '-40px' }}
+                  transition={{ duration: 0.5, delay: (i % 4) * 0.08 }}
+                  whileHover={{ scale: 1.02, zIndex: 10 }}
+                >
+                  <img
+                    src={src}
+                    alt={`사진 ${i + 1}`}
+                    className="w-full object-cover block"
+                    loading="lazy"
+                  />
+                </motion.div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* ── 장소 ─────────────────────────────────────── */}
-        <section className="py-6 px-6 z-10 relative">
+        {/* ══ 장소 ═════════════════════════════════════════ */}
+        <section className="px-6 z-10 relative">
           <div className="max-w-sm mx-auto">
             <TicketDivider />
-            <motion.div className="py-16"
+            <motion.div className="py-20"
               initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-80px' }} transition={{ duration: 0.9 }}>
               <div className="text-center mb-8"><SectionLabel>Location</SectionLabel></div>
-              <div className="rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-                <div className="px-6 py-5 border-b border-gray-50 bg-gray-50/50">
-                  <p className="text-[7px] tracking-[0.3em] text-gray-400 mb-1">TERMINAL</p>
-                  <p className="text-xl font-semibold tracking-wider text-gray-800">신도림 라마다</p>
-                  <p className="text-sm text-rose-400 tracking-widest mt-0.5">하늘정원홀</p>
+
+              {/* 장소 카드 */}
+              <div className="rounded-2xl border border-gray-100 overflow-hidden shadow-sm mb-3">
+                <div className="px-6 py-5 bg-[#FAFAFA] border-b border-gray-50">
+                  <p className="text-[7px] tracking-[0.3em] text-gray-400 mb-1.5">TERMINAL</p>
+                  <p className="text-xl font-semibold tracking-wide text-gray-800">신도림 라마다</p>
+                  <p className="text-xs text-rose-400 tracking-[0.2em] mt-0.5">하늘정원홀</p>
                 </div>
                 <div className="grid grid-cols-2 divide-x divide-gray-50">
                   <div className="px-5 py-4">
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <Calendar size={12} className="text-rose-400/70" />
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Calendar size={11} className="text-rose-400/70" />
                       <p className="text-[7px] tracking-[0.28em] text-gray-400">DATE & TIME</p>
                     </div>
-                    <p className="text-[13px] font-semibold text-gray-700 tracking-wide">2027.03.14</p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">일요일 14:10</p>
+                    <p className="text-[13px] font-semibold text-gray-700">2027.03.14</p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">일요일 · 14:10</p>
                   </div>
                   <div className="px-5 py-4">
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <MapPin size={12} className="text-rose-400/70" />
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <MapPin size={11} className="text-rose-400/70" />
                       <p className="text-[7px] tracking-[0.28em] text-gray-400">ADDRESS</p>
                     </div>
-                    <p className="text-[13px] font-semibold text-gray-700 tracking-wide">구로구 새말로 97</p>
+                    <p className="text-[13px] font-semibold text-gray-700">구로구 새말로 97</p>
                     <p className="text-[11px] text-gray-400 mt-0.5">서울특별시</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3 px-5 py-4 border-t border-gray-50">
+                <div className="grid grid-cols-2 gap-2.5 px-5 py-4 border-t border-gray-50">
                   <a href="https://map.kakao.com/?q=신도림+라마다+호텔" target="_blank" rel="noopener noreferrer"
-                    className="py-3 bg-[#FEE500] text-black text-[11px] rounded-xl font-bold tracking-wider active:scale-95 transition-transform text-center block">카카오맵</a>
-                  <a href="https://map.naver.com/v5/search/신도림 라마다 호텔" target="_blank" rel="noopener noreferrer"
-                    className="py-3 bg-[#03C75A] text-white text-[11px] rounded-xl font-bold tracking-wider active:scale-95 transition-transform text-center block">네이버지도</a>
+                    className="py-3 bg-[#FEE500] text-black text-[11px] rounded-xl font-bold tracking-wide active:scale-95 transition-transform text-center block">
+                    카카오맵
+                  </a>
+                  <a href="https://map.naver.com/v5/search/신도림+라마다+호텔" target="_blank" rel="noopener noreferrer"
+                    className="py-3 bg-[#03C75A] text-white text-[11px] rounded-xl font-bold tracking-wide active:scale-95 transition-transform text-center block">
+                    네이버지도
+                  </a>
                 </div>
               </div>
 
               {/* 지도 */}
-              <div className="mt-4 rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
+              <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
                 <iframe
                   src="https://maps.google.com/maps?q=서울+구로구+새말로+97+라마다&output=embed&hl=ko&z=16"
-                  width="100%"
-                  height="280"
+                  width="100%" height="260"
                   style={{ border: 0, display: 'block' }}
                   loading="lazy"
                   referrerPolicy="no-referrer-when-downgrade"
@@ -564,33 +709,39 @@ export default function WeddingInvitation() {
           </div>
         </section>
 
-        {/* ── 방명록 ───────────────────────────────────── */}
+        {/* ══ 방명록 ═══════════════════════════════════════ */}
         <GuestbookWall />
 
-        {/* ── RSVP ─────────────────────────────────────── */}
-        <section className="py-6 px-6 z-10 relative">
+        {/* ══ RSVP ═════════════════════════════════════════ */}
+        <section className="px-6 z-10 relative">
           <div className="max-w-sm mx-auto">
             <TicketDivider />
-            <motion.div className="text-center py-16"
+            <motion.div className="text-center py-20"
               initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '-80px' }} transition={{ duration: 0.9 }}>
               <SectionLabel>RSVP</SectionLabel>
-              <p className="text-gray-400 text-sm mb-10 leading-relaxed">
+              <p className="text-gray-400 text-sm mb-10 leading-[1.9]">
                 원활한 예식 진행을 위해<br />참석 여부를 미리 알려주시면 감사하겠습니다.
               </p>
               <button onClick={() => setRsvpOpen(true)}
-                className="w-full py-4 bg-rose-400 text-white rounded-2xl font-semibold tracking-[0.1em] shadow-[0_4px_20px_rgba(244,63,94,0.25)] active:scale-95 transition-all hover:bg-rose-500">
-                ✈ &nbsp; 참석 의사 전달하기
+                className="w-full py-4 bg-rose-400 text-white rounded-2xl font-semibold tracking-[0.1em] shadow-[0_6px_24px_rgba(244,63,94,0.22)] active:scale-95 transition-all hover:bg-rose-500 hover:shadow-[0_8px_30px_rgba(244,63,94,0.3)] flex items-center justify-center gap-2">
+                <Plane size={15} fill="currentColor" strokeWidth={0} />
+                참석 의사 전달하기
               </button>
             </motion.div>
             <TicketDivider />
           </div>
         </section>
 
-        {/* ── FOOTER ───────────────────────────────────── */}
-        <footer className="py-12 text-center z-10 relative bg-[#FBF9F7]">
-          <p className="text-[8px] tracking-[0.4em] text-gray-300 uppercase">© 2027 Wooktae &amp; Hyewon · All rights reserved</p>
-          <p className="text-[8px] tracking-[0.3em] text-gray-300 mt-2 uppercase">Wedding Air · Flight WD-0314</p>
+        {/* ══ FOOTER ═══════════════════════════════════════ */}
+        <footer className="py-14 text-center z-10 relative bg-[#FBF9F7]">
+          <Plane size={14} className="text-rose-300 mx-auto mb-3" fill="currentColor" strokeWidth={0} />
+          <p className="text-[8px] tracking-[0.42em] text-gray-300 uppercase mb-1.5">
+            © 2027 Wooktae &amp; Hyewon
+          </p>
+          <p className="text-[7px] tracking-[0.32em] text-gray-300 uppercase">
+            Wedding Air · Flight WD-0314
+          </p>
         </footer>
       </main>
     </>
