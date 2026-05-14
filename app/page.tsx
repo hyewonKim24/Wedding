@@ -1359,7 +1359,7 @@ export default function WeddingInvitation() {
 
           {/* 배경 연도 워터마크 */}
           <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none select-none" style={{ alignItems: 'flex-start', paddingTop: '5vh' }}>
-            <span className="flex flex-col items-center text-[38vw] font-black leading-none tracking-tighter"
+            <span className="flex flex-col items-center text-[22vw] font-black leading-none tracking-tighter"
               style={{ color: 'rgba(17,24,39,0.025)' }}>
               <span>2027</span>
               <span>0314</span>
