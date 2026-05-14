@@ -1348,7 +1348,7 @@ export default function WeddingInvitation() {
         {!boarded && <BoardingPassIntro onBoard={() => setBoarded(true)} />}
       </AnimatePresence>
 
-      <main className="relative min-h-screen bg-white text-gray-800 font-sans overflow-x-hidden mx-auto" style={{ maxWidth: '480px' }}>
+      <main className="relative min-h-screen bg-white text-gray-800 font-sans overflow-x-hidden">
         {rsvpOpen && <RsvpModal onClose={() => setRsvpOpen(false)} />}
         <FallingPetals />
         <FlyingPlane />
