@@ -483,7 +483,7 @@ function OurJourneySection() {
   const sectionRef = useRef<HTMLDivElement>(null);
   const [pathLen, setPathLen] = useState(0);
   const [plane, setPlane]     = useState({ x: 55, y: 90, angle: 0 });
-  const animFrameRef = useRef<number>();
+  const animFrameRef = useRef<number>(0);
   const startedRef   = useRef(false);
 
   // path 길이 측정 (렌더 후 약간 딜레이)
