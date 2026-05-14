@@ -479,43 +479,54 @@ const JOURNEY_STOPS = [
 ];
 
 function OurJourneySection() {
-  const pathRef  = useRef<SVGPathElement>(null);
+  const pathRef    = useRef<SVGPathElement>(null);
   const sectionRef = useRef<HTMLDivElement>(null);
-  const [pathLen, setPathLen] = useState(900);
-  const [plane, setPlane] = useState({ x: 55, y: 90, angle: 0 });
+  const [pathLen, setPathLen] = useState(0);
+  const [plane, setPlane]     = useState({ x: 55, y: 90, angle: 0 });
   const animFrameRef = useRef<number>();
+  const startedRef   = useRef(false);
 
+  // path 길이 측정 (렌더 후 약간 딜레이)
   useEffect(() => {
-    if (pathRef.current) setPathLen(pathRef.current.getTotalLength());
+    const t = setTimeout(() => {
+      if (pathRef.current) setPathLen(pathRef.current.getTotalLength());
+    }, 100);
+    return () => clearTimeout(t);
   }, []);
 
+  // 애니메이션 실행 함수
+  const runAnim = useMemo(() => () => {
+    if (startedRef.current || !pathRef.current) return;
+    startedRef.current = true;
+    const len  = pathRef.current.getTotalLength();
+    const dur  = 2200;
+    const t0   = performance.now() + 300;
+    const ease = (t: number) => t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+    const tick = (now: number) => {
+      const p    = Math.min(Math.max((now - t0) / dur, 0), 1);
+      const dist = ease(p) * len;
+      const pt   = pathRef.current!.getPointAtLength(dist);
+      const pt2  = pathRef.current!.getPointAtLength(Math.min(dist + 2, len));
+      setPlane({
+        x: pt.x, y: pt.y,
+        angle: Math.atan2(pt2.y - pt.y, pt2.x - pt.x) * 180 / Math.PI,
+      });
+      if (p < 1) animFrameRef.current = requestAnimationFrame(tick);
+    };
+    animFrameRef.current = requestAnimationFrame(tick);
+  }, []);
+
+  // IntersectionObserver — threshold 0, 한 번만 실행
   useEffect(() => {
     const section = sectionRef.current;
     if (!section) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (!entry.isIntersecting || !pathRef.current) return;
-      observer.disconnect();
-      const len   = pathRef.current.getTotalLength();
-      const dur   = 2200;
-      const delay = 200;
-      const start = performance.now() + delay;
-      const ease  = (t: number) => t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
-
-      const tick = (now: number) => {
-        if (now < start) { animFrameRef.current = requestAnimationFrame(tick); return; }
-        const p = Math.min((now - start) / dur, 1);
-        const dist = ease(p) * len;
-        const pt  = pathRef.current!.getPointAtLength(dist);
-        const pt2 = pathRef.current!.getPointAtLength(Math.min(dist + 2, len));
-        const angle = Math.atan2(pt2.y - pt.y, pt2.x - pt.x) * 180 / Math.PI;
-        setPlane({ x: pt.x, y: pt.y, angle });
-        if (p < 1) animFrameRef.current = requestAnimationFrame(tick);
-      };
-      animFrameRef.current = requestAnimationFrame(tick);
-    }, { threshold: 0.2 });
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { runAnim(); observer.disconnect(); } },
+      { threshold: 0 }
+    );
     observer.observe(section);
     return () => { observer.disconnect(); if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); };
-  }, [pathLen]);
+  }, [runAnim]);
 
   return (
     <section ref={sectionRef} className="px-6 z-10 relative">
@@ -560,8 +571,14 @@ function OurJourneySection() {
 
               {/* 경로 따라가는 비행기 */}
               <g transform={`translate(${plane.x}, ${plane.y}) rotate(${plane.angle})`}>
-                <text x="0" y="0" textAnchor="middle" dominantBaseline="middle"
-                  style={{ fontSize: '14px', userSelect: 'none' }}>✈</text>
+                {/* 기체 */}
+                <path d="M9,0 L-8,-2.5 L-6,0 L-8,2.5 Z" fill="#f43f5e" />
+                {/* 날개 */}
+                <path d="M2,0 L0,-7 L-2,-6 L-1,0 Z" fill="#f43f5e" opacity="0.9" />
+                <path d="M2,0 L0,7 L-2,6 L-1,0 Z" fill="#f43f5e" opacity="0.9" />
+                {/* 꼬리 */}
+                <path d="M-6,0 L-8,-3.5 L-7,-3 L-6,-1 Z" fill="#f43f5e" opacity="0.8" />
+                <path d="M-6,0 L-8,3.5 L-7,3 L-6,1 Z" fill="#f43f5e" opacity="0.8" />
               </g>
 
               {/* 스팟 원 */}
@@ -1380,7 +1397,7 @@ export default function WeddingInvitation() {
 
           {/* 배경 연도 워터마크 */}
           <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none select-none" style={{ alignItems: 'flex-start', paddingTop: '5vh' }}>
-            <span className="flex flex-col items-center text-[22vw] font-black leading-none tracking-tighter"
+            <span className="flex flex-col items-center text-[42vw] font-black leading-none tracking-tighter"
               style={{ color: 'rgba(17,24,39,0.025)' }}>
               <span>2027</span>
               <span>0314</span>
