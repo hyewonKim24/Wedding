@@ -479,14 +479,46 @@ const JOURNEY_STOPS = [
 ];
 
 function OurJourneySection() {
-  const pathRef = useRef<SVGPathElement>(null);
+  const pathRef  = useRef<SVGPathElement>(null);
+  const sectionRef = useRef<HTMLDivElement>(null);
   const [pathLen, setPathLen] = useState(900);
+  const [plane, setPlane] = useState({ x: 55, y: 90, angle: 0 });
+  const animFrameRef = useRef<number>();
+
   useEffect(() => {
     if (pathRef.current) setPathLen(pathRef.current.getTotalLength());
   }, []);
 
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting || !pathRef.current) return;
+      observer.disconnect();
+      const len   = pathRef.current.getTotalLength();
+      const dur   = 2200;
+      const delay = 200;
+      const start = performance.now() + delay;
+      const ease  = (t: number) => t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+
+      const tick = (now: number) => {
+        if (now < start) { animFrameRef.current = requestAnimationFrame(tick); return; }
+        const p = Math.min((now - start) / dur, 1);
+        const dist = ease(p) * len;
+        const pt  = pathRef.current!.getPointAtLength(dist);
+        const pt2 = pathRef.current!.getPointAtLength(Math.min(dist + 2, len));
+        const angle = Math.atan2(pt2.y - pt.y, pt2.x - pt.x) * 180 / Math.PI;
+        setPlane({ x: pt.x, y: pt.y, angle });
+        if (p < 1) animFrameRef.current = requestAnimationFrame(tick);
+      };
+      animFrameRef.current = requestAnimationFrame(tick);
+    }, { threshold: 0.2 });
+    observer.observe(section);
+    return () => { observer.disconnect(); if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); };
+  }, [pathLen]);
+
   return (
-    <section className="px-6 z-10 relative">
+    <section ref={sectionRef} className="px-6 z-10 relative">
       <div className="max-w-sm mx-auto">
         <motion.div className="py-16"
           initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }}
@@ -527,21 +559,10 @@ function OurJourneySection() {
               />
 
               {/* 경로 따라가는 비행기 */}
-              <motion.g
-                style={{
-                  offsetPath: `path("${JOURNEY_PATH}")`,
-                  offsetRotate: 'auto',
-                } as React.CSSProperties}
-                initial={{ offsetDistance: '0%' } as any}
-                whileInView={{ offsetDistance: '100%' } as any}
-                viewport={{ once: true, margin: '-40px' }}
-                transition={{ duration: 2.2, ease: 'easeInOut', delay: 0.2 }}>
-                <text
-                  x="0" y="0"
-                  textAnchor="middle"
-                  dominantBaseline="middle"
+              <g transform={`translate(${plane.x}, ${plane.y}) rotate(${plane.angle})`}>
+                <text x="0" y="0" textAnchor="middle" dominantBaseline="middle"
                   style={{ fontSize: '14px', userSelect: 'none' }}>✈</text>
-              </motion.g>
+              </g>
 
               {/* 스팟 원 */}
               {JOURNEY_STOPS.map((s, i) => (
