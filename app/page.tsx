@@ -481,18 +481,10 @@ const JOURNEY_STOPS = [
 function OurJourneySection() {
   const pathRef    = useRef<SVGPathElement>(null);
   const sectionRef = useRef<HTMLDivElement>(null);
-  const [pathLen, setPathLen] = useState(900);
-  const [plane, setPlane]     = useState({ x: 55, y: 90, angle: 0 });
+  const [plane, setPlane] = useState({ x: 55, y: 90, angle: 0 });
   const animFrameRef = useRef<number>(0);
   const startedRef   = useRef(false);
 
-  // path 길이 측정 (렌더 후 약간 딜레이)
-  useEffect(() => {
-    const t = setTimeout(() => {
-      if (pathRef.current) setPathLen(pathRef.current.getTotalLength());
-    }, 100);
-    return () => clearTimeout(t);
-  }, []);
 
   // 애니메이션 실행 함수
   const runAnim = useMemo(() => () => {
@@ -581,15 +573,10 @@ function OurJourneySection() {
               {/* 측정용 hidden path */}
               <path ref={pathRef} d={JOURNEY_PATH} fill="none" stroke="none" />
 
-              {/* 애니메이션 컬러 경로 */}
-              <motion.path
+              {/* 컬러 경로 */}
+              <path
                 d={JOURNEY_PATH} fill="none"
                 stroke="url(#jGrad)" strokeWidth="3" strokeLinecap="round"
-                strokeDasharray={pathLen}
-                initial={{ strokeDashoffset: pathLen }}
-                whileInView={{ strokeDashoffset: 0 }}
-                viewport={{ once: true, margin: '-40px' }}
-                transition={{ duration: 2.2, ease: 'easeInOut', delay: 0.2 }}
               />
 
               {/* 경로 따라가는 비행기 */}
