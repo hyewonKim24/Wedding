@@ -481,7 +481,7 @@ const JOURNEY_STOPS = [
 function OurJourneySection() {
   const pathRef    = useRef<SVGPathElement>(null);
   const sectionRef = useRef<HTMLDivElement>(null);
-  const [pathLen, setPathLen] = useState(0);
+  const [pathLen, setPathLen] = useState(900);
   const [plane, setPlane]     = useState({ x: 55, y: 90, angle: 0 });
   const animFrameRef = useRef<number>(0);
   const startedRef   = useRef(false);
@@ -606,17 +606,12 @@ function OurJourneySection() {
 
               {/* 스팟 원 */}
               {JOURNEY_STOPS.map((s, i) => (
-                <motion.g key={i}
-                  initial={{ opacity: 0, scale: 0 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.4 + i * 0.4, type: 'spring', stiffness: 300, damping: 18 }}>
+                <g key={i}>
                   <circle cx={s.x} cy={s.y} r={18} fill="white"
-                    stroke={s.color} strokeWidth="2.5"
-                    style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.1))' }} />
+                    stroke={s.color} strokeWidth="2.5" />
                   <text x={s.x} y={s.y + 1} textAnchor="middle" dominantBaseline="middle"
                     style={{ fontSize: '15px' }}>{s.icon}</text>
-                </motion.g>
+                </g>
               ))}
             </svg>
 
@@ -639,10 +634,7 @@ function OurJourneySection() {
                 ...(isCustom ? { left: (s as any).lx,         top: (s as any).ly  } : {}),
               };
               return (
-                <motion.div key={i} style={style}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.5 + i * 0.3 }}>
+                <div key={i} style={style}>
                   <p className="font-bold tracking-[0.1em]"
                     style={{ fontSize: '9px', color: s.color, marginBottom: '2px', whiteSpace: 'nowrap' }}>
                     {s.code} {s.date && `· ${s.date}`}
@@ -670,7 +662,7 @@ function OurJourneySection() {
                       <p style={{ fontSize: '8px', color: s.color, letterSpacing: '0.15em' }}>FINAL</p>
                     </div>
                   )}
-                </motion.div>
+                </div>
               );
             })}
           </div>
