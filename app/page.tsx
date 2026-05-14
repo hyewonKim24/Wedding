@@ -474,7 +474,7 @@ const JOURNEY_PATH = 'M 55,90 C 155,65 205,165 265,165 C 335,165 315,255 55,255 
 const JOURNEY_STOPS = [
   { x: 55,  y: 90,  side: 'custom', lx: 5, ly: 20, lw: 150, code: 'SBN', date: null,           city: '곡란중학교',     sub: '같은 중학교, 모르는 사이', icon: '🏫', color: '#9CA3AF' },
   { x: 265, y: 165, side: 'custom', lx: 200, ly: 85, lw: 130, code: 'SBN', date: '11 SEP 2025',  city: '산본',           sub: '욱태 생일 · 첫 만남',     icon: '💕', color: '#F43F5E' },
-  { x: 55,  y: 255, side: 'custom', lx: 5, ly: 160, lw: 155, code: 'LAS', date: '24 FEB 2026',  city: '라스베이거스',   sub: '벨라지오 분수쇼 프로포즈', icon: '💍', color: '#7C3AED' },
+  { x: 55,  y: 255, side: 'custom', lx: 5, ly: 160, lw: 155, code: 'LAS', date: '24 FEB 2026',  city: '라스베이거스',   sub: '혜원 생일. 프로포즈', icon: '💍', color: '#7C3AED' },
   { x: 180, y: 360, side: 'right', code: 'SEL', date: '14 MAR 2027',  city: '라마다 신도림',  sub: 'FINAL DESTINATION',       icon: '💒', color: '#F43F5E' },
 ];
 
@@ -528,6 +528,20 @@ function OurJourneySection() {
     return () => { observer.disconnect(); if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); };
   }, [runAnim]);
 
+  // 컨테이너 너비에 맞게 스케일
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  useEffect(() => {
+    const update = () => {
+      if (containerRef.current) {
+        setScale(Math.min(containerRef.current.offsetWidth / JOURNEY_W, 1));
+      }
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
   return (
     <section ref={sectionRef} className="px-6 z-10 relative">
       <div className="max-w-sm mx-auto">
@@ -540,7 +554,16 @@ function OurJourneySection() {
             <p className="text-gray-500 text-[11px] tracking-[0.2em] mt-1">두 사람의 이야기</p>
           </div>
 
-          <div style={{ position: 'relative', width: JOURNEY_W, margin: '0 auto' }}>
+          {/* 스케일 측정용 */}
+          <div ref={containerRef} style={{ width: '100%' }} />
+
+          <div style={{
+            position: 'relative',
+            width: JOURNEY_W,
+            height: JOURNEY_H * scale,
+            transform: `scale(${scale})`,
+            transformOrigin: 'top left',
+          }}>
             <svg width={JOURNEY_W} height={JOURNEY_H} viewBox={`0 0 ${JOURNEY_W} ${JOURNEY_H}`}
               style={{ overflow: 'visible', display: 'block' }}>
               <defs>
