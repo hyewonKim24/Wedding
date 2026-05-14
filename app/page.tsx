@@ -160,14 +160,13 @@ function GallerySection() {
                 scrollSnapAlign: 'center',
                 width: 'calc(100vw - 64px)',
                 maxWidth: '320px',
-                aspectRatio: '3/4',
               }}
               whileTap={{ scale: 0.97 }}
             >
               {src
-                ? <img src={src} alt={`사진 ${i + 1}`} className="w-full h-full object-cover" loading="lazy"
+                ? <img src={src} alt={`사진 ${i + 1}`} className="w-full h-auto block" loading="lazy"
                     onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
-                : <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                : <div className="w-full bg-gray-200 flex items-center justify-center" style={{ aspectRatio: '3/4' }}>
                     <svg width="36" height="36" viewBox="0 0 48 48" fill="none">
                       <rect x="4" y="10" width="40" height="30" rx="4" stroke="#9ca3af" strokeWidth="2" fill="none"/>
                       <circle cx="17" cy="22" r="4" stroke="#9ca3af" strokeWidth="2" fill="none"/>
@@ -316,7 +315,6 @@ function WeddingSnapSection() {
     <>
       <section className="px-5 py-20 z-10 relative bg-[#FBF9F7]">
         <div className="max-w-sm mx-auto">
-          <TicketDivider />
 
           <motion.div className="pt-16 pb-10"
             initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }}
@@ -401,59 +399,63 @@ function WeddingSnapSection() {
 
 // ─── 카카오맵 ─────────────────────────────────────────────
 const KAKAO_APP_KEY = 'e2e376c7b43632160887f2a350bf3afe';
-const HOTEL_LAT = 37.50898;
-const HOTEL_LNG = 126.89075;
+const HOTEL_ADDRESS = '서울특별시 구로구 신도림동 427-3';
 
 function KakaoMap() {
   const mapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const load = () => {
+    const initMap = () => {
       if (!mapRef.current) return;
       const kakao = (window as any).kakao;
+
       kakao.maps.load(() => {
-        const map = new kakao.maps.Map(mapRef.current, {
-          center: new kakao.maps.LatLng(HOTEL_LAT, HOTEL_LNG),
-          level: 4,
-        });
+        const geocoder = new kakao.maps.services.Geocoder();
 
-        // 기본 마커
-        new kakao.maps.Marker({
-          map,
-          position: new kakao.maps.LatLng(HOTEL_LAT, HOTEL_LNG),
-        });
+        const ps = new kakao.maps.services.Places();
+        ps.keywordSearch('라마다 서울 신도림 호텔', (data: any[], status: any) => {
+          const ok = kakao.maps.services.Status.OK;
+          const coords = status === ok
+            ? new kakao.maps.LatLng(data[0].y, data[0].x)
+            : new kakao.maps.LatLng(37.50957, 126.89020);
 
-        // 커스텀 오버레이 — 욱태♥혜원
-        const content = `
-          <div style="
+          const map = new kakao.maps.Map(mapRef.current, {
+            center: coords,
+            level: 4,
+          });
+
+          new kakao.maps.Marker({ map, position: coords });
+
+          const content = `<div style="
             background:white;
             border:2px solid #f43f5e;
             border-radius:20px;
-            padding:6px 14px;
+            padding:5px 13px;
             font-size:12px;
             font-weight:600;
             color:#f43f5e;
             white-space:nowrap;
             box-shadow:0 2px 8px rgba(244,63,94,0.25);
-            transform:translateY(-60px);
-          ">욱태♥혜원</div>
-        `;
-        new kakao.maps.CustomOverlay({
-          map,
-          position: new kakao.maps.LatLng(HOTEL_LAT, HOTEL_LNG),
-          content,
-          yAnchor: 1,
+            margin-bottom:8px;
+          ">욱태♥혜원</div>`;
+
+          new kakao.maps.CustomOverlay({
+            map,
+            position: coords,
+            content,
+            yAnchor: 1,
+          });
         });
       });
     };
 
     if ((window as any).kakao?.maps) {
-      load();
+      initMap();
       return;
     }
     const script = document.createElement('script');
-    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_APP_KEY}&autoload=false`;
-    script.onload = load;
+    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_APP_KEY}&libraries=services&autoload=false`;
+    script.onload = initMap;
     document.head.appendChild(script);
   }, []);
 
@@ -461,6 +463,160 @@ function KakaoMap() {
     <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
       <div ref={mapRef} style={{ width: '100%', height: '260px' }} />
     </div>
+  );
+}
+
+// ─── 우리의 여정 ──────────────────────────────────────────
+const JOURNEY_W = 320;
+const JOURNEY_H = 440;
+const JOURNEY_PATH = 'M 55,90 C 155,65 205,165 265,165 C 335,165 315,255 55,255 C -15,255 85,360 180,360';
+
+const JOURNEY_STOPS = [
+  { x: 55,  y: 90,  side: 'custom', lx: 5, ly: 20, lw: 150, code: 'SBN', date: null,           city: '곡란중학교',     sub: '같은 중학교, 모르는 사이', icon: '🏫', color: '#9CA3AF' },
+  { x: 265, y: 165, side: 'custom', lx: 200, ly: 85, lw: 130, code: 'SBN', date: '11 SEP 2025',  city: '산본',           sub: '욱태 생일 · 첫 만남',     icon: '💕', color: '#F43F5E' },
+  { x: 55,  y: 255, side: 'custom', lx: 5, ly: 160, lw: 155, code: 'LAS', date: '24 FEB 2026',  city: '라스베이거스',   sub: '벨라지오 분수쇼 프로포즈', icon: '💍', color: '#7C3AED' },
+  { x: 180, y: 360, side: 'right', code: 'SEL', date: '14 MAR 2027',  city: '라마다 신도림',  sub: 'FINAL DESTINATION',       icon: '💒', color: '#F43F5E' },
+];
+
+function OurJourneySection() {
+  const pathRef = useRef<SVGPathElement>(null);
+  const [pathLen, setPathLen] = useState(900);
+  useEffect(() => {
+    if (pathRef.current) setPathLen(pathRef.current.getTotalLength());
+  }, []);
+
+  return (
+    <section className="px-6 z-10 relative">
+      <div className="max-w-sm mx-auto">
+        <motion.div className="py-16"
+          initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-60px' }} transition={{ duration: 0.9 }}>
+
+          <div className="text-center mb-8">
+            <SectionLabel>Our Journey</SectionLabel>
+            <p className="text-gray-500 text-[11px] tracking-[0.2em] mt-1">두 사람의 이야기</p>
+          </div>
+
+          <div style={{ position: 'relative', width: JOURNEY_W, margin: '0 auto' }}>
+            <svg width={JOURNEY_W} height={JOURNEY_H} viewBox={`0 0 ${JOURNEY_W} ${JOURNEY_H}`}
+              style={{ overflow: 'visible', display: 'block' }}>
+              <defs>
+                <linearGradient id="jGrad" gradientUnits="userSpaceOnUse" x1="55" y1="90" x2="180" y2="360">
+                  <stop offset="0%"   stopColor="#9CA3AF" />
+                  <stop offset="33%"  stopColor="#F43F5E" />
+                  <stop offset="66%"  stopColor="#7C3AED" />
+                  <stop offset="100%" stopColor="#F43F5E" />
+                </linearGradient>
+              </defs>
+
+              {/* 배경 점선 */}
+              <path d={JOURNEY_PATH} fill="none" stroke="#E5E7EB" strokeWidth="3" strokeDasharray="6 5" />
+
+              {/* 측정용 hidden path */}
+              <path ref={pathRef} d={JOURNEY_PATH} fill="none" stroke="none" />
+
+              {/* 애니메이션 컬러 경로 */}
+              <motion.path
+                d={JOURNEY_PATH} fill="none"
+                stroke="url(#jGrad)" strokeWidth="3" strokeLinecap="round"
+                strokeDasharray={pathLen}
+                initial={{ strokeDashoffset: pathLen }}
+                whileInView={{ strokeDashoffset: 0 }}
+                viewport={{ once: true, margin: '-40px' }}
+                transition={{ duration: 2.2, ease: 'easeInOut', delay: 0.2 }}
+              />
+
+              {/* 경로 따라가는 비행기 */}
+              <motion.g
+                style={{
+                  offsetPath: `path("${JOURNEY_PATH}")`,
+                  offsetRotate: 'auto',
+                } as React.CSSProperties}
+                initial={{ offsetDistance: '0%' } as any}
+                whileInView={{ offsetDistance: '100%' } as any}
+                viewport={{ once: true, margin: '-40px' }}
+                transition={{ duration: 2.2, ease: 'easeInOut', delay: 0.2 }}>
+                <text
+                  x="0" y="0"
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  style={{ fontSize: '14px', userSelect: 'none' }}>✈</text>
+              </motion.g>
+
+              {/* 스팟 원 */}
+              {JOURNEY_STOPS.map((s, i) => (
+                <motion.g key={i}
+                  initial={{ opacity: 0, scale: 0 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.4 + i * 0.4, type: 'spring', stiffness: 300, damping: 18 }}>
+                  <circle cx={s.x} cy={s.y} r={18} fill="white"
+                    stroke={s.color} strokeWidth="2.5"
+                    style={{ filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.1))' }} />
+                  <text x={s.x} y={s.y + 1} textAnchor="middle" dominantBaseline="middle"
+                    style={{ fontSize: '15px' }}>{s.icon}</text>
+                </motion.g>
+              ))}
+            </svg>
+
+            {/* 라벨 */}
+            {JOURNEY_STOPS.map((s, i) => {
+              const isRight  = s.side === 'right';
+              const isLeft   = s.side === 'left';
+              const isAbove  = s.side === 'above';
+              const isBelow  = s.side === 'below';
+              const isCustom = s.side === 'custom';
+              const W = (s as any).lw ?? 112;
+              const style: React.CSSProperties = {
+                position: 'absolute',
+                zIndex: 10,
+                width: W,
+                ...(isRight  ? { left: s.x + 24,              top: s.y - 20       } : {}),
+                ...(isLeft   ? { right: JOURNEY_W - s.x + 24, top: s.y - 20       } : {}),
+                ...(isAbove  ? { left: s.x - W + 8,           top: s.y - 68       } : {}),
+                ...(isBelow  ? { left: s.x + 24,              top: s.y + 22       } : {}),
+                ...(isCustom ? { left: (s as any).lx,         top: (s as any).ly  } : {}),
+              };
+              return (
+                <motion.div key={i} style={style}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.5 + i * 0.3 }}>
+                  <p className="font-bold tracking-[0.1em]"
+                    style={{ fontSize: '9px', color: s.color, marginBottom: '2px', whiteSpace: 'nowrap' }}>
+                    {s.code} {s.date && `· ${s.date}`}
+                  </p>
+                  <p className="font-semibold text-gray-800 leading-tight"
+                    style={{ fontSize: '13px', marginBottom: '2px' }}>
+                    {s.city}
+                  </p>
+                  <p className="text-gray-400 leading-snug" style={{ fontSize: '10px', whiteSpace: 'nowrap' }}>
+                    {s.sub}
+                  </p>
+                  {i === 2 && (
+                    <div className="flex items-center gap-1 mt-1">
+                      <motion.div className="w-1.5 h-1.5 rounded-full"
+                        style={{ background: s.color }}
+                        animate={{ scale: [1, 1.5, 1], opacity: [1, 0.4, 1] }}
+                        transition={{ duration: 1.5, repeat: Infinity }} />
+                      <p style={{ fontSize: '9px', color: s.color }}>현재진행형</p>
+                    </div>
+                  )}
+                  {i === 3 && (
+                    <div className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full"
+                      style={{ background: `${s.color}12`, border: `1px solid ${s.color}30` }}>
+                      <Plane size={8} fill="currentColor" strokeWidth={0} style={{ color: s.color }} />
+                      <p style={{ fontSize: '8px', color: s.color, letterSpacing: '0.15em' }}>FINAL</p>
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
+        </motion.div>
+        <TicketDivider />
+      </div>
+    </section>
   );
 }
 
@@ -706,25 +862,100 @@ function DynamicBGM() {
 
 // ─── 3. 방명록 ────────────────────────────────────────────
 const HANDWRITING_FONTS = ['Nanum01','Nanum02','Nanum03','Nanum04','Nanum05','Nanum06','Nanum07','Nanum08'];
-const ACCENT_COLORS = ['#F9A8B8','#C4B5FD','#93C5FD','#86EFAC','#FCA5A5','#FCD34D','#A5F3FC','#D9A8F9'];
+
+const STAMP_COLORS = [
+  '#8B1A1A','#1A3F6B','#1A5C2A','#4A1A6B',
+  '#1A5C5C','#6B3A1A','#6B1A4A','#1A4A5C',
+];
+
+function PostcardCard({ msg, i }: { msg: { id: number; name: string; text: string; fontIdx: number; accentIdx: number }; i: number }) {
+  const font  = HANDWRITING_FONTS[msg.fontIdx % HANDWRITING_FONTS.length];
+  const color = STAMP_COLORS[msg.accentIdx % STAMP_COLORS.length];
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ duration: 0.35, delay: i * 0.06 }}
+      style={{
+        background: '#FDF6E3',
+        borderRadius: '6px',
+        padding: '3px',
+        backgroundImage: `
+          repeating-linear-gradient(-45deg,
+            #c0392b 0px,#c0392b 4px,
+            #1a3f7a 4px,#1a3f7a 8px,
+            #FDF6E3 8px,#FDF6E3 12px
+          )
+        `,
+        boxShadow: '0 2px 12px rgba(0,0,0,0.1)',
+      }}>
+      <div style={{ background: '#FDF6E3', borderRadius: '4px', padding: '12px 13px 11px' }}>
+
+        {/* 우표 + 소인 */}
+        <div className="flex justify-end items-start gap-1.5 mb-2">
+          {/* 소인(postmark) */}
+          <div style={{ position: 'relative', width: '30px', height: '30px', flexShrink: 0, opacity: 0.22 }}>
+            <div style={{ position: 'absolute', inset: 0, border: `1.5px solid ${color}`, borderRadius: '50%' }} />
+            {[-30, 0, 30].map(deg => (
+              <div key={deg} style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '1px', background: color, transform: `rotate(${deg}deg)`, transformOrigin: 'center' }} />
+            ))}
+          </div>
+          {/* 우표 */}
+          <div style={{
+            width: '30px', height: '36px',
+            border: `1.5px dashed ${color}`,
+            borderRadius: '2px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: `${color}12`,
+            flexShrink: 0,
+          }}>
+            <span style={{ fontSize: '13px' }}>✈</span>
+          </div>
+        </div>
+
+        {/* 헤더 라인 */}
+        <div className="flex items-center gap-2 mb-2">
+          <div style={{ flex: 1, height: '1px', backgroundImage: `repeating-linear-gradient(to right, ${color}40 0px, ${color}40 4px, transparent 4px, transparent 8px)` }} />
+          <p style={{ fontFamily: 'monospace', fontSize: '6px', letterSpacing: '0.25em', color, opacity: 0.55 }}>WEDDING · 2027.03.14</p>
+          <div style={{ flex: 1, height: '1px', backgroundImage: `repeating-linear-gradient(to right, ${color}40 0px, ${color}40 4px, transparent 4px, transparent 8px)` }} />
+        </div>
+
+        {/* 메시지 */}
+        <p style={{
+          fontFamily: `'${font}', cursive`,
+          fontSize: '1.05rem',
+          lineHeight: 1.6,
+          color: '#4A3728',
+          wordBreak: 'break-word',
+          minHeight: '40px',
+        }}>{msg.text}</p>
+
+        {/* 보내는 사람 */}
+        <div className="flex items-center gap-1.5 mt-2 pt-2" style={{ borderTop: `1px dashed ${color}30` }}>
+          <span style={{ fontSize: '11px' }}>📮</span>
+          <p style={{ fontFamily: `'${font}', cursive`, fontSize: '0.85rem', color: '#7A5C3A' }}>
+            {msg.name}
+          </p>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
 
 type Message = { id: number; name: string; text: string; fontIdx: number; accentIdx: number };
 
 function GuestbookWall() {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [name, setName] = useState('');
-  const [text, setText] = useState('');
-  const [focused, setFocused] = useState<'name'|'text'|null>(null);
-  const [page, setPage] = useState(0);
+  const [name, setName]     = useState('');
+  const [text, setText]     = useState('');
+  const [page, setPage]     = useState(0);
+  const [dir, setDir]       = useState(1);
   const [loading, setLoading] = useState(true);
-  const PER_PAGE = 5;
+  const PER_PAGE = 4;
 
-  // 초기 로드
   useEffect(() => {
-    supabase
-      .from('guestbook')
-      .select('*')
-      .order('created_at', { ascending: false })
+    supabase.from('guestbook').select('*').order('created_at', { ascending: false })
       .then(({ data }) => {
         if (data) setMessages(data.map(r => ({
           id: r.id, name: r.name, text: r.text,
@@ -737,16 +968,20 @@ function GuestbookWall() {
   const totalPages = Math.ceil(messages.length / PER_PAGE);
   const paged = messages.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
 
+  const goPage = (next: number) => {
+    setDir(next > page ? 1 : -1);
+    setPage(next);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !text.trim()) return;
     const fontIdx   = Math.floor(Math.random() * HANDWRITING_FONTS.length);
-    const accentIdx = Math.floor(Math.random() * ACCENT_COLORS.length);
+    const accentIdx = Math.floor(Math.random() * STAMP_COLORS.length);
     const { data, error } = await supabase
       .from('guestbook')
       .insert({ name, text, font_idx: fontIdx, accent_idx: accentIdx })
-      .select()
-      .single();
+      .select().single();
     if (!error && data) {
       setMessages(prev => [{ id: data.id, name, text, fontIdx, accentIdx }, ...prev]);
       setPage(0);
@@ -755,121 +990,109 @@ function GuestbookWall() {
   };
 
   return (
-    <section className="py-24 px-5 relative overflow-hidden bg-white">
-
-      <div className="max-w-sm mx-auto relative">
+    <section className="py-24 px-5 relative overflow-hidden" style={{
+      background: '#EDE4D3',
+      backgroundImage: `repeating-linear-gradient(0deg, rgba(160,130,80,0.06) 0px, rgba(160,130,80,0.06) 1px, transparent 1px, transparent 22px)`,
+    }}>
+      <div className="max-w-sm mx-auto">
         <div className="text-center mb-10">
           <SectionLabel>Guestbook</SectionLabel>
-          <p className="text-gray-400 text-[11px] tracking-[0.2em] mt-1">두 사람을 위한 따뜻한 한 마디</p>
+          <p className="text-[11px] tracking-[0.2em] mt-1" style={{ color: '#9C8268' }}>축하 엽서를 보내주세요</p>
         </div>
 
-        {/* 입력 폼 */}
-        <motion.form onSubmit={handleSubmit}
-          className="mb-8 rounded-2xl bg-[#FAFAF8] border border-gray-100 overflow-hidden"
-          style={{ boxShadow: '0 2px 20px rgba(0,0,0,0.04)' }}>
-          <div className="px-5 pt-5 pb-4 border-b border-gray-50">
-            <p className="text-[8px] tracking-[0.32em] text-rose-300 mb-3">WRITE A MESSAGE</p>
-            <input
-              type="text" placeholder="이름" maxLength={10} value={name}
-              onFocus={() => setFocused('name')} onBlur={() => setFocused(null)}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full outline-none text-[13px] text-gray-700 placeholder:text-gray-300 bg-transparent mb-3 font-medium"
-            />
-            <textarea
-              placeholder="축하의 말을 적어주세요..." rows={3} value={text}
-              onFocus={() => setFocused('text')} onBlur={() => setFocused(null)}
-              onChange={(e) => setText(e.target.value)}
-              className="w-full resize-none outline-none text-[13px] text-gray-600 placeholder:text-gray-300 bg-transparent leading-relaxed"
-            />
-          </div>
-          <button type="submit"
-            disabled={!name.trim() || !text.trim()}
-            className="w-full py-3.5 text-[11px] tracking-[0.25em] font-medium transition-all active:scale-[0.99] disabled:opacity-30"
-            style={{ color: '#f43f5e', background: 'white' }}>
-            마음 남기기 ↑
-          </button>
-        </motion.form>
-
-        {/* 메시지 카드 목록 */}
-        {loading && (
-          <p className="text-center text-[11px] text-gray-300 tracking-[0.2em] py-8">불러오는 중...</p>
-        )}
-        <div className="flex flex-col gap-3">
-          <AnimatePresence initial={false}>
-            {paged.map((msg, i) => {
-              const font   = HANDWRITING_FONTS[msg.fontIdx % HANDWRITING_FONTS.length];
-              const accent = ACCENT_COLORS[msg.accentIdx % ACCENT_COLORS.length];
-              return (
-                <motion.div
-                  key={msg.id}
-                  initial={{ opacity: 0, y: 24 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  transition={{ duration: 0.4, delay: i === 0 ? 0 : 0 }}
-                  className="bg-white rounded-2xl overflow-hidden"
-                  style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.06)', border: '1px solid #f3f4f6' }}
-                >
-                  <div className="flex">
-                    <div className="w-1 flex-shrink-0 rounded-l-2xl" style={{ background: accent }} />
-                    <div className="flex-1 px-4 py-3">
-                      <div className="flex items-start gap-2">
-                        <span className="text-[1.4rem] leading-none flex-shrink-0" style={{ color: accent, fontFamily: 'Georgia, serif', lineHeight: 1, marginTop: '2px' }}>"</span>
-                        <p style={{ fontFamily: `'${font}', cursive`, fontSize: '1.05rem', lineHeight: 1.5, color: '#374151', wordBreak: 'break-word', flex: 1 }}>
-                          {msg.text}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 mt-2">
-                        <div className="flex-1 h-px bg-gray-100" />
-                        <p style={{ fontFamily: `'${font}', cursive`, fontSize: '0.82rem', color: '#9ca3af' }}>
-                          {msg.name}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </div>
-
-        {/* 페이지네이션 */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-3 mt-8">
-            <button
-              onClick={() => setPage(p => Math.max(0, p - 1))}
-              disabled={page === 0}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 transition-all disabled:opacity-20 hover:bg-gray-50 active:scale-95 border border-gray-100">
-              <ChevronDown size={14} className="rotate-90" />
-            </button>
-
-            <div className="flex items-center gap-1.5">
-              {Array.from({ length: totalPages }).map((_, i) => (
-                <button key={i} onClick={() => setPage(i)}
-                  className="rounded-full transition-all duration-200"
-                  style={{
-                    width: i === page ? '20px' : '6px',
-                    height: '6px',
-                    background: i === page ? '#f43f5e' : '#e5e7eb',
-                  }} />
-              ))}
+        {/* 입력 폼 — 엽서 스타일 */}
+        <form onSubmit={handleSubmit} className="mb-10" style={{
+          background: '#FDF6E3',
+          borderRadius: '6px',
+          padding: '3px',
+          backgroundImage: `repeating-linear-gradient(-45deg,
+            #c0392b 0px,#c0392b 4px,
+            #1a3f7a 4px,#1a3f7a 8px,
+            #FDF6E3 8px,#FDF6E3 12px)`,
+          boxShadow: '0 3px 16px rgba(0,0,0,0.12)',
+        }}>
+          <div style={{ background: '#FDF6E3', borderRadius: '4px', padding: '16px' }}>
+            <div className="flex justify-between items-start mb-3">
+              <p style={{ fontFamily: 'monospace', fontSize: '7px', letterSpacing: '0.3em', color: '#8B6A3A', opacity: 0.6 }}>
+                AIR MAIL ✈
+              </p>
+              {/* 우표 */}
+              <div style={{ width: '32px', height: '38px', border: '1.5px dashed #8B6A3A', borderRadius: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(139,106,58,0.08)', flexShrink: 0 }}>
+                <span style={{ fontSize: '14px' }}>💌</span>
+              </div>
             </div>
-
-            <button
-              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-              disabled={page === totalPages - 1}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 transition-all disabled:opacity-20 hover:bg-gray-50 active:scale-95 border border-gray-100">
-              <ChevronDown size={14} className="-rotate-90" />
+            <div style={{ borderTop: '1px dashed rgba(139,106,58,0.3)', paddingTop: '10px' }}>
+              <input type="text" placeholder="보내는 사람 (이름)" maxLength={10} value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full outline-none bg-transparent mb-3 font-medium"
+                style={{ fontSize: '13px', color: '#4A3728', borderBottom: '1px dashed rgba(139,106,58,0.3)', paddingBottom: '6px' }} />
+              <textarea placeholder="따뜻한 축하의 말을 적어주세요..." rows={3} value={text}
+                onChange={(e) => setText(e.target.value)}
+                className="w-full resize-none outline-none bg-transparent leading-relaxed"
+                style={{ fontSize: '1.1rem', color: '#4A3728', fontFamily: `'${HANDWRITING_FONTS[0]}', cursive` }} />
+            </div>
+            <button type="submit"
+              disabled={!name.trim() || !text.trim()}
+              className="mt-3 w-full py-2.5 rounded text-[11px] tracking-[0.2em] font-medium transition-all active:scale-95 disabled:opacity-30"
+              style={{ background: 'rgba(139,106,58,0.12)', color: '#6B4F2A', border: '1px dashed rgba(139,106,58,0.4)' }}>
+              축하 엽서 보내기 ✈️
             </button>
           </div>
-        )}
+        </form>
 
-        {/* 총 개수 */}
-        {totalPages > 1 && (
-          <p className="text-center text-[9px] tracking-[0.2em] text-gray-300 mt-3">
-            {page * PER_PAGE + 1}–{Math.min((page + 1) * PER_PAGE, messages.length)} / {messages.length}
-          </p>
-        )}
+        {loading && <p className="text-center py-8 text-[11px]" style={{ color: '#B09A7A', letterSpacing: '0.2em' }}>loading...</p>}
 
+        {/* 스와이프 엽서 영역 */}
+        {messages.length > 0 && (
+          <div className="relative overflow-hidden">
+            <motion.div
+              key={page}
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.15}
+              onDragEnd={(_, info) => {
+                if (info.offset.x < -60 && page < totalPages - 1) goPage(page + 1);
+                if (info.offset.x > 60  && page > 0)              goPage(page - 1);
+              }}
+              initial={{ x: dir * 80, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: dir * -80, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+              style={{ touchAction: 'pan-y' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', alignItems: 'start' }}>
+                <AnimatePresence>
+                  {paged.map((msg, i) => (
+                    <PostcardCard key={msg.id} msg={msg} i={i} />
+                  ))}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+
+            {/* 스와이프 힌트 */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-5 px-1">
+                <p style={{ fontSize: '9px', color: '#B09A7A', letterSpacing: '0.15em' }}>
+                  ← 스와이프
+                </p>
+                <div className="flex gap-1.5">
+                  {Array.from({ length: totalPages }).map((_, i) => (
+                    <button key={i} onClick={() => goPage(i)}
+                      className="rounded-full transition-all duration-200"
+                      style={{ width: i === page ? '18px' : '5px', height: '5px', background: i === page ? '#8B6A3A' : '#C4A882' }} />
+                  ))}
+                </div>
+                <p style={{ fontSize: '9px', color: '#B09A7A', letterSpacing: '0.15em' }}>
+                  스와이프 →
+                </p>
+              </div>
+            )}
+            {totalPages > 1 && (
+              <p className="text-center mt-2" style={{ fontSize: '9px', color: '#C4A882', letterSpacing: '0.15em' }}>
+                {page * PER_PAGE + 1}–{Math.min((page + 1) * PER_PAGE, messages.length)} / {messages.length}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </section>
   );
@@ -1227,21 +1450,27 @@ export default function WeddingInvitation() {
         </section>
 
         {/* ══ COVER PHOTO ══════════════════════════════════ */}
-        <section className="relative w-full z-10" style={{ height: '60vw', maxHeight: '420px', minHeight: '240px' }}>
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gray-200">
-            <svg width="40" height="40" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <section className="relative w-full z-10">
+          <img
+            src="/images/cover.jpg"
+            alt="cover"
+            className="w-full h-auto block"
+            onError={(e) => {
+              const el = e.currentTarget as HTMLImageElement;
+              el.style.display = 'none';
+              (el.nextElementSibling as HTMLElement).style.display = 'flex';
+            }}
+          />
+          {/* 사진 없을 때만 표시 */}
+          <div className="w-full bg-gray-200 flex-col items-center justify-center gap-3 py-20"
+            style={{ display: 'none' }}>
+            <svg width="40" height="40" viewBox="0 0 48 48" fill="none">
               <rect x="4" y="10" width="40" height="30" rx="4" stroke="#9ca3af" strokeWidth="2" fill="none"/>
               <circle cx="17" cy="22" r="4" stroke="#9ca3af" strokeWidth="2" fill="none"/>
               <path d="M4 34 L14 24 L22 32 L30 22 L44 36" stroke="#9ca3af" strokeWidth="2" strokeLinejoin="round" fill="none"/>
             </svg>
-            <p className="text-[10px] tracking-[0.25em] text-gray-400">public/images/cover.jpg</p>
+            <p className="text-[10px] tracking-[0.25em] text-gray-400 mt-2">public/images/cover.jpg</p>
           </div>
-          <img
-            src="/images/cover.jpg"
-            alt="cover"
-            className="absolute inset-0 w-full h-full object-cover object-center z-10"
-            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-          />
         </section>
 
         {/* ══ 인사말 ═══════════════════════════════════════ */}
@@ -1261,6 +1490,9 @@ export default function WeddingInvitation() {
             <TicketDivider />
           </div>
         </section>
+
+        {/* ══ 우리의 여정 ══════════════════════════════════ */}
+        <OurJourneySection />
 
         {/* ══ 갤러리 ═══════════════════════════════════════ */}
         <GallerySection />
