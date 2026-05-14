@@ -34,5 +34,12 @@ alter table wedding_snaps enable row level security;
 create policy "누구나 읽기 가능"  on wedding_snaps for select using (true);
 create policy "누구나 쓰기 가능"  on wedding_snaps for insert with check (true);
 
--- ④ Storage 버킷 생성 (Storage > New bucket 에서 직접 만들어도 됩니다)
--- 버킷 이름: wedding-snaps  /  Public: ON
+-- ④ Storage 정책 (버킷은 대시보드에서 Public ON으로 생성 후 아래 실행)
+insert into storage.buckets (id, name, public) values ('wedding-snaps', 'wedding-snaps', true)
+  on conflict (id) do update set public = true;
+
+create policy "누구나 업로드 가능" on storage.objects
+  for insert with check (bucket_id = 'wedding-snaps');
+
+create policy "누구나 읽기 가능" on storage.objects
+  for select using (bucket_id = 'wedding-snaps');

@@ -261,72 +261,56 @@ function GallerySection() {
 type SnapPhoto = { id: number; url: string; name: string };
 
 function WeddingSnapSection() {
-  const [photos, setPhotos]     = useState<SnapPhoto[]>([]);
-  const [name, setName]         = useState('');
-  const [file, setFile]         = useState<File | null>(null);
-  const [preview, setPreview]   = useState<string | null>(null);
+  const [name, setName]           = useState('');
+  const [files, setFiles]         = useState<File[]>([]);
+  const [previews, setPreviews]   = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [lightbox, setLightbox] = useState<number | null>(null);
+  const [progress, setProgress]   = useState(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [done, setDone]           = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // 초기 로드
-  useEffect(() => {
-    supabase
-      .from('wedding_snaps')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        if (data) setPhotos(data.map(r => ({ id: r.id, url: r.image_url, name: r.uploader_name })));
-      });
-  }, []);
-
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setFile(f);
-    setPreview(URL.createObjectURL(f));
+    const selected = Array.from(e.target.files ?? []);
+    if (!selected.length) return;
+    setFiles(prev => [...prev, ...selected]);
+    setPreviews(prev => [...prev, ...selected.map(f => URL.createObjectURL(f))]);
+    setDone(false);
     e.target.value = '';
   };
 
-  const handleUpload = async () => {
-    if (!file || !preview) return;
-    setUploading(true);
-    const ext  = file.name.split('.').pop();
-    const path = `${Date.now()}.${ext}`;
-    const { error: upErr } = await supabase.storage
-      .from('wedding-snaps')
-      .upload(path, file, { upsert: false });
-    if (upErr) { setUploading(false); return; }
-    const { data: urlData } = supabase.storage.from('wedding-snaps').getPublicUrl(path);
-    const imageUrl = urlData.publicUrl;
-    const uploaderName = name.trim() || '하객';
-    const { data, error } = await supabase
-      .from('wedding_snaps')
-      .insert({ uploader_name: uploaderName, image_url: imageUrl })
-      .select()
-      .single();
-    if (!error && data) {
-      setPhotos(prev => [{ id: data.id, url: imageUrl, name: uploaderName }, ...prev]);
-    }
-    setFile(null);
-    setPreview(null);
-    setName('');
-    setUploading(false);
+  const removeFile = (i: number) => {
+    setFiles(prev => prev.filter((_, idx) => idx !== i));
+    setPreviews(prev => prev.filter((_, idx) => idx !== i));
   };
 
-  const lbPrev = () => setLightbox(i => (i !== null && i > 0 ? i - 1 : i));
-  const lbNext = () => setLightbox(i => (i !== null && i < photos.length - 1 ? i + 1 : i));
-
-  useEffect(() => {
-    if (lightbox === null) return;
-    const fn = (e: KeyboardEvent) => {
-      if (e.key === 'Escape')      setLightbox(null);
-      if (e.key === 'ArrowLeft')   lbPrev();
-      if (e.key === 'ArrowRight')  lbNext();
-    };
-    window.addEventListener('keydown', fn);
-    return () => window.removeEventListener('keydown', fn);
-  }, [lightbox]);
+  const handleUpload = async () => {
+    if (!files.length) return;
+    setUploading(true);
+    setUploadError(null);
+    setProgress(0);
+    const uploaderName = name.trim() || '하객';
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      const ext  = f.name.split('.').pop() ?? 'jpg';
+      const path = `${Date.now()}-${i}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from('wedding-snaps')
+        .upload(path, f, { upsert: false });
+      if (upErr) { setUploadError(`Storage 오류: ${upErr.message}`); setUploading(false); return; }
+      const { data: urlData } = supabase.storage.from('wedding-snaps').getPublicUrl(path);
+      const { error: dbErr } = await supabase
+        .from('wedding_snaps')
+        .insert({ uploader_name: uploaderName, image_url: urlData.publicUrl });
+      if (dbErr) { setUploadError(`DB 오류: ${dbErr.message}`); setUploading(false); return; }
+      setProgress(i + 1);
+    }
+    setFiles([]);
+    setPreviews([]);
+    setName('');
+    setUploading(false);
+    setDone(true);
+  };
 
   return (
     <>
@@ -354,116 +338,129 @@ function WeddingSnapSection() {
             <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden mb-6"
               style={{ boxShadow: '0 2px 20px rgba(0,0,0,0.04)' }}>
 
-              {/* 사진 선택 영역 */}
-              <button
-                onClick={() => fileRef.current?.click()}
-                className="w-full transition-colors active:bg-gray-50"
-                style={{ background: preview ? 'transparent' : undefined }}>
-                {preview ? (
-                  <div className="relative">
-                    <img src={preview} alt="preview" className="w-full max-h-64 object-cover" />
-                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                      <p className="text-white text-[11px] tracking-[0.2em]">사진 변경</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center gap-3 py-10 px-6">
-                    <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center">
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" strokeWidth="1.8">
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                        <circle cx="12" cy="13" r="4"/>
-                      </svg>
-                    </div>
-                    <p className="text-[12px] text-gray-400 tracking-wide">사진을 선택해 주세요</p>
-                    <p className="text-[10px] text-gray-300">JPG · PNG · HEIC</p>
-                  </div>
-                )}
+              {/* 사진 추가 버튼 */}
+              <button onClick={() => fileRef.current?.click()}
+                className="w-full flex flex-col items-center justify-center gap-3 py-8 px-6 transition-colors active:bg-gray-50">
+                <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" strokeWidth="1.8">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                  </svg>
+                </div>
+                <p className="text-[12px] text-gray-400 tracking-wide">
+                  {previews.length > 0 ? `${previews.length}장 선택됨 · 추가하기` : '사진을 선택해 주세요 (여러 장 가능)'}
+                </p>
+                <p className="text-[10px] text-gray-300">JPG · PNG · HEIC</p>
               </button>
 
-              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+              <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFile} />
+
+              {/* 미리보기 그리드 */}
+              {previews.length > 0 && (
+                <div className="grid grid-cols-3 gap-1.5 px-4 pb-4">
+                  {previews.map((src, i) => (
+                    <div key={i} className="relative rounded-xl overflow-hidden" style={{ aspectRatio: '1' }}>
+                      <img src={src} className="w-full h-full object-cover" />
+                      <button onClick={() => removeFile(i)}
+                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 text-white text-[10px] flex items-center justify-center">
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* 이름 + 업로드 버튼 */}
               <div className="px-5 py-4 border-t border-gray-50 flex items-center gap-3">
-                <input
-                  type="text" placeholder="이름 (선택)" maxLength={10} value={name}
+                <input type="text" placeholder="이름 (선택)" maxLength={10} value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="flex-1 outline-none text-[13px] text-gray-700 placeholder:text-gray-300 bg-transparent"
-                />
-                <button
-                  onClick={handleUpload}
-                  disabled={!preview || uploading}
+                  className="flex-1 outline-none text-[13px] text-gray-700 placeholder:text-gray-300 bg-transparent" />
+                <button onClick={handleUpload}
+                  disabled={!files.length || uploading}
                   className="px-4 py-2 rounded-xl text-[11px] font-medium tracking-wide transition-all active:scale-95 disabled:opacity-30"
                   style={{ background: '#fff1f2', color: '#f43f5e' }}>
-                  {uploading ? '업로드 중...' : '업로드'}
+                  {uploading ? `${progress}/${files.length} 업로드 중...` : '업로드'}
                 </button>
               </div>
+
+              {done && (
+                <p className="px-5 pb-3 text-[10px] text-emerald-500 tracking-wide">✓ 업로드 완료!</p>
+              )}
+              {uploadError && (
+                <p className="px-5 pb-3 text-[10px] text-red-400">{uploadError}</p>
+              )}
             </div>
 
-            {/* 업로드된 사진 그리드 */}
-            {photos.length > 0 && (
-              <div>
-                <p className="text-[9px] tracking-[0.3em] text-gray-400 mb-3 text-center">{photos.length} PHOTOS</p>
-                <div className="grid grid-cols-3 gap-1.5">
-                  <AnimatePresence>
-                    {photos.map((p, i) => (
-                      <motion.div key={p.id}
-                        initial={{ opacity: 0, scale: 0.85 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.85 }}
-                        transition={{ duration: 0.3 }}
-                        className="relative cursor-pointer overflow-hidden rounded-xl"
-                        style={{ aspectRatio: '1' }}
-                        onClick={() => setLightbox(i)}>
-                        <img src={p.url} alt={p.name} className="w-full h-full object-cover" />
-                        <div className="absolute bottom-0 left-0 right-0 px-2 py-1.5"
-                          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.45), transparent)' }}>
-                          <p className="text-white text-[9px] truncate">{p.name}</p>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </div>
-              </div>
-            )}
           </motion.div>
         </div>
       </section>
 
-      {/* 라이트박스 */}
-      <AnimatePresence>
-        {lightbox !== null && (
-          <motion.div className="fixed inset-0 z-[200] flex items-center justify-center"
-            style={{ background: 'rgba(0,0,0,0.93)' }}
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => setLightbox(null)}>
-            <button className="absolute top-5 right-5 w-9 h-9 flex items-center justify-center rounded-full bg-white/10 text-white"
-              onClick={() => setLightbox(null)}>✕</button>
-            <p className="absolute top-6 left-1/2 -translate-x-1/2 text-white/50 text-[11px] tracking-[0.2em]">
-              {lightbox + 1} / {photos.length}
-            </p>
-            <motion.div key={lightbox}
-              initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
-              drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.2}
-              onDragEnd={(_, info) => { if (info.offset.x < -60) lbNext(); if (info.offset.x > 60) lbPrev(); }}
-              onClick={(e) => e.stopPropagation()}
-              className="flex flex-col items-center gap-3">
-              <img src={photos[lightbox].url} alt={photos[lightbox].name}
-                className="rounded-xl object-contain shadow-2xl"
-                style={{ maxWidth: '90vw', maxHeight: '75vh' }} />
-              <p className="text-white/60 text-[12px] tracking-wide">{photos[lightbox].name}</p>
-            </motion.div>
-            {lightbox > 0 && (
-              <button onClick={(e) => { e.stopPropagation(); lbPrev(); }}
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white text-xl">‹</button>
-            )}
-            {lightbox < photos.length - 1 && (
-              <button onClick={(e) => { e.stopPropagation(); lbNext(); }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white text-xl">›</button>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
     </>
+  );
+}
+
+// ─── 카카오맵 ─────────────────────────────────────────────
+const KAKAO_APP_KEY = 'e2e376c7b43632160887f2a350bf3afe';
+const HOTEL_LAT = 37.50898;
+const HOTEL_LNG = 126.89075;
+
+function KakaoMap() {
+  const mapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const load = () => {
+      if (!mapRef.current) return;
+      const kakao = (window as any).kakao;
+      kakao.maps.load(() => {
+        const map = new kakao.maps.Map(mapRef.current, {
+          center: new kakao.maps.LatLng(HOTEL_LAT, HOTEL_LNG),
+          level: 4,
+        });
+
+        // 기본 마커
+        new kakao.maps.Marker({
+          map,
+          position: new kakao.maps.LatLng(HOTEL_LAT, HOTEL_LNG),
+        });
+
+        // 커스텀 오버레이 — 욱태♥혜원
+        const content = `
+          <div style="
+            background:white;
+            border:2px solid #f43f5e;
+            border-radius:20px;
+            padding:6px 14px;
+            font-size:12px;
+            font-weight:600;
+            color:#f43f5e;
+            white-space:nowrap;
+            box-shadow:0 2px 8px rgba(244,63,94,0.25);
+            transform:translateY(-60px);
+          ">욱태♥혜원</div>
+        `;
+        new kakao.maps.CustomOverlay({
+          map,
+          position: new kakao.maps.LatLng(HOTEL_LAT, HOTEL_LNG),
+          content,
+          yAnchor: 1,
+        });
+      });
+    };
+
+    if ((window as any).kakao?.maps) {
+      load();
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_APP_KEY}&autoload=false`;
+    script.onload = load;
+    document.head.appendChild(script);
+  }, []);
+
+  return (
+    <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
+      <div ref={mapRef} style={{ width: '100%', height: '260px' }} />
+    </div>
   );
 }
 
@@ -1315,16 +1312,7 @@ export default function WeddingInvitation() {
               </div>
 
               {/* 지도 */}
-              <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
-                <iframe
-                  src="https://maps.google.com/maps?q=라마다+서울+신도림+호텔&output=embed&hl=ko&z=16"
-                  width="100%" height="260"
-                  style={{ border: 0, display: 'block' }}
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                  title="라마다 서울 신도림 호텔 지도"
-                />
-              </div>
+              <KakaoMap />
 
               {/* 오시는길 */}
               <div className="mt-4 rounded-2xl border border-gray-100 overflow-hidden shadow-sm bg-white">
@@ -1412,9 +1400,10 @@ export default function WeddingInvitation() {
           <p className="text-[8px] tracking-[0.42em] text-gray-300 uppercase mb-1.5">
             © 2027 Wooktae &amp; Hyewon
           </p>
-          <p className="text-[7px] tracking-[0.32em] text-gray-300 uppercase">
+          <p className="text-[7px] tracking-[0.32em] text-gray-300 uppercase mb-4">
             Wedding Air · Flight WD-0314
           </p>
+          <p className="text-[7px] tracking-[0.2em] text-gray-200">made by hyewon</p>
         </footer>
       </main>
     </>
