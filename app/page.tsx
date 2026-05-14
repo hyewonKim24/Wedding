@@ -1,23 +1,17 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { supabase } from '@/lib/supabase';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
-import { Play, Pause, MapPin, Calendar, Heart, Send, Plane } from 'lucide-react';
+import { Play, Pause, MapPin, Calendar, Heart, Send, Plane, ChevronDown, Copy, Check } from 'lucide-react';
 
 // ─── 바코드 ───────────────────────────────────────────────
 const BARCODE = [3,1,2,3,1,3,2,1,3,2,1,2,3,1,2,1,3,2,3,1,2,3,1,2,1,3,2,1,3,1,2,3,2,1,3,2,1,2,3,1,2,1,3,2];
 const BAR_H   = [100,60,100,75,100,55,100,80,65,100,70,100,55,90,100,60,100,75,50,100,80,100,65,55,100,70,100,60,80,100,55,100,75,100,60,85,100,55,100,70,60,100,80,100];
 
-// ─── 갤러리 사진 (URL만 추가하면 자동으로 표시됩니다) ──────
-const GALLERY_PHOTOS = [
-  'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=600&q=80',
-  'https://images.unsplash.com/photo-1606800052052-a08af7148866?w=600&q=80',
-  'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=600&q=80',
-  'https://images.unsplash.com/photo-1583939000340-690624471565?w=600&q=80',
-  'https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=600&q=80',
-  'https://images.unsplash.com/photo-1469371670807-013ccf25f16a?w=600&q=80',
-  'https://images.unsplash.com/photo-1591604021695-0c69b7c05981?w=600&q=80',
-  'https://images.unsplash.com/photo-1550005809-91ad75fb315f?w=600&q=80',
+// ─── 갤러리 사진 (경로만 추가하면 자동으로 표시됩니다) ──────
+const GALLERY_PHOTOS: string[] = [
+  '', '', '', '', '', '', '', '',
 ];
 
 // ─── 꽃잎 & 화이트데이 파티클 ────────────────────────────
@@ -99,6 +93,389 @@ function TicketDivider() {
       <div className="flex-1 border-t border-dashed border-gray-200" />
       <Plane size={11} className="text-rose-300 rotate-90 flex-shrink-0" fill="currentColor" strokeWidth={0} />
       <div className="flex-1 border-t border-dashed border-gray-200" />
+    </div>
+  );
+}
+
+// ─── 갤러리 ───────────────────────────────────────────────
+function GallerySection() {
+  const [activeIdx, setActiveIdx]     = useState(0);
+  const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const { scrollLeft, offsetWidth } = scrollRef.current;
+    setActiveIdx(Math.round(scrollLeft / offsetWidth));
+  };
+
+  const goTo = (i: number) => {
+    scrollRef.current?.scrollTo({ left: i * scrollRef.current.offsetWidth, behavior: 'smooth' });
+    setActiveIdx(i);
+  };
+
+  const lbPrev = () => setLightboxIdx(i => (i !== null && i > 0 ? i - 1 : i));
+  const lbNext = () => setLightboxIdx(i => (i !== null && i < GALLERY_PHOTOS.length - 1 ? i + 1 : i));
+
+  useEffect(() => {
+    if (lightboxIdx === null) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLightboxIdx(null);
+      if (e.key === 'ArrowLeft')  lbPrev();
+      if (e.key === 'ArrowRight') lbNext();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [lightboxIdx]);
+
+  return (
+    <>
+      <section className="py-16 z-10 relative bg-[#FBF9F7]">
+        <div className="text-center mb-8 px-5">
+          <SectionLabel>Gallery</SectionLabel>
+          <p className="text-[10px] tracking-[0.2em] text-gray-400 mt-1">
+            {activeIdx + 1} / {GALLERY_PHOTOS.length}
+          </p>
+        </div>
+
+        {/* 캐러셀 */}
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="flex overflow-x-auto"
+          style={{
+            scrollSnapType: 'x mandatory',
+            scrollbarWidth: 'none',
+            WebkitOverflowScrolling: 'touch',
+            gap: '12px',
+            paddingLeft: '20px',
+            paddingRight: '20px',
+          }}>
+          {GALLERY_PHOTOS.map((src, i) => (
+            <motion.div
+              key={i}
+              onClick={() => setLightboxIdx(i)}
+              className="flex-shrink-0 overflow-hidden rounded-2xl bg-gray-200 cursor-pointer shadow-sm"
+              style={{
+                scrollSnapAlign: 'center',
+                width: 'calc(100vw - 64px)',
+                maxWidth: '320px',
+                aspectRatio: '3/4',
+              }}
+              whileTap={{ scale: 0.97 }}
+            >
+              {src
+                ? <img src={src} alt={`사진 ${i + 1}`} className="w-full h-full object-cover" loading="lazy"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                : <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                    <svg width="36" height="36" viewBox="0 0 48 48" fill="none">
+                      <rect x="4" y="10" width="40" height="30" rx="4" stroke="#9ca3af" strokeWidth="2" fill="none"/>
+                      <circle cx="17" cy="22" r="4" stroke="#9ca3af" strokeWidth="2" fill="none"/>
+                      <path d="M4 34 L14 24 L22 32 L30 22 L44 36" stroke="#9ca3af" strokeWidth="2" strokeLinejoin="round" fill="none"/>
+                    </svg>
+                  </div>
+              }
+            </motion.div>
+          ))}
+        </div>
+
+        {/* 도트 인디케이터 */}
+        <div className="flex justify-center gap-1.5 mt-5">
+          {GALLERY_PHOTOS.map((_, i) => (
+            <button key={i} onClick={() => goTo(i)}
+              className="rounded-full transition-all duration-300"
+              style={{
+                width: i === activeIdx ? '20px' : '6px',
+                height: '6px',
+                background: i === activeIdx ? '#f43f5e' : '#d1d5db',
+              }} />
+          ))}
+        </div>
+      </section>
+
+      {/* 라이트박스 */}
+      <AnimatePresence>
+        {lightboxIdx !== null && (
+          <motion.div
+            className="fixed inset-0 z-[200] flex items-center justify-center"
+            style={{ background: 'rgba(0,0,0,0.93)' }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setLightboxIdx(null)}>
+
+            {/* 닫기 */}
+            <button className="absolute top-5 right-5 w-9 h-9 flex items-center justify-center rounded-full bg-white/10 text-white text-lg z-10"
+              onClick={() => setLightboxIdx(null)}>✕</button>
+
+            {/* 카운터 */}
+            <p className="absolute top-6 left-1/2 -translate-x-1/2 text-white/50 text-[11px] tracking-[0.2em]">
+              {lightboxIdx + 1} / {GALLERY_PHOTOS.length}
+            </p>
+
+            {/* 이미지 (드래그로 넘기기) */}
+            <motion.div
+              key={lightboxIdx}
+              className="relative"
+              style={{ maxWidth: '90vw', maxHeight: '80vh' }}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.2 }}
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.2}
+              onDragEnd={(_, info) => {
+                if (info.offset.x < -60) lbNext();
+                if (info.offset.x > 60)  lbPrev();
+              }}
+              onClick={(e) => e.stopPropagation()}>
+              {GALLERY_PHOTOS[lightboxIdx]
+                ? <img src={GALLERY_PHOTOS[lightboxIdx]} alt={`사진 ${lightboxIdx + 1}`}
+                    className="rounded-xl object-contain shadow-2xl"
+                    style={{ maxWidth: '90vw', maxHeight: '80vh' }} />
+                : <div className="rounded-xl bg-gray-700"
+                    style={{ width: '70vw', aspectRatio: '3/4', maxHeight: '80vh' }} />
+              }
+            </motion.div>
+
+            {/* 이전/다음 버튼 */}
+            {lightboxIdx > 0 && (
+              <button onClick={(e) => { e.stopPropagation(); lbPrev(); }}
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white text-xl">
+                ‹
+              </button>
+            )}
+            {lightboxIdx < GALLERY_PHOTOS.length - 1 && (
+              <button onClick={(e) => { e.stopPropagation(); lbNext(); }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white text-xl">
+                ›
+              </button>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+// ─── 웨딩 스냅 ────────────────────────────────────────────
+type SnapPhoto = { id: number; url: string; name: string };
+
+function WeddingSnapSection() {
+  const [photos, setPhotos]     = useState<SnapPhoto[]>([]);
+  const [name, setName]         = useState('');
+  const [file, setFile]         = useState<File | null>(null);
+  const [preview, setPreview]   = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [lightbox, setLightbox] = useState<number | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // 초기 로드
+  useEffect(() => {
+    supabase
+      .from('wedding_snaps')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (data) setPhotos(data.map(r => ({ id: r.id, url: r.image_url, name: r.uploader_name })));
+      });
+  }, []);
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setFile(f);
+    setPreview(URL.createObjectURL(f));
+    e.target.value = '';
+  };
+
+  const handleUpload = async () => {
+    if (!file || !preview) return;
+    setUploading(true);
+    const ext  = file.name.split('.').pop();
+    const path = `${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage
+      .from('wedding-snaps')
+      .upload(path, file, { upsert: false });
+    if (upErr) { setUploading(false); return; }
+    const { data: urlData } = supabase.storage.from('wedding-snaps').getPublicUrl(path);
+    const imageUrl = urlData.publicUrl;
+    const uploaderName = name.trim() || '하객';
+    const { data, error } = await supabase
+      .from('wedding_snaps')
+      .insert({ uploader_name: uploaderName, image_url: imageUrl })
+      .select()
+      .single();
+    if (!error && data) {
+      setPhotos(prev => [{ id: data.id, url: imageUrl, name: uploaderName }, ...prev]);
+    }
+    setFile(null);
+    setPreview(null);
+    setName('');
+    setUploading(false);
+  };
+
+  const lbPrev = () => setLightbox(i => (i !== null && i > 0 ? i - 1 : i));
+  const lbNext = () => setLightbox(i => (i !== null && i < photos.length - 1 ? i + 1 : i));
+
+  useEffect(() => {
+    if (lightbox === null) return;
+    const fn = (e: KeyboardEvent) => {
+      if (e.key === 'Escape')      setLightbox(null);
+      if (e.key === 'ArrowLeft')   lbPrev();
+      if (e.key === 'ArrowRight')  lbNext();
+    };
+    window.addEventListener('keydown', fn);
+    return () => window.removeEventListener('keydown', fn);
+  }, [lightbox]);
+
+  return (
+    <>
+      <section className="px-5 py-20 z-10 relative bg-[#FBF9F7]">
+        <div className="max-w-sm mx-auto">
+          <TicketDivider />
+
+          <motion.div className="pt-16 pb-10"
+            initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-60px' }} transition={{ duration: 0.9 }}>
+
+            {/* 헤더 */}
+            <div className="text-center mb-8">
+              <SectionLabel>Wedding Snap</SectionLabel>
+              <p className="text-gray-800 text-[17px] font-light tracking-wide mt-1 mb-4">
+                우리만의 사진작가가 되어주세요!
+              </p>
+              <p className="text-gray-400 text-[12px] leading-[1.9]">
+                저희의 결혼식 추억을 함께 남겨주세요.<br />
+                <span className="text-rose-400">베스트 사진작가</span>님께 소정의 상품도 준비했어요 🎁
+              </p>
+            </div>
+
+            {/* 업로드 카드 */}
+            <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden mb-6"
+              style={{ boxShadow: '0 2px 20px rgba(0,0,0,0.04)' }}>
+
+              {/* 사진 선택 영역 */}
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="w-full transition-colors active:bg-gray-50"
+                style={{ background: preview ? 'transparent' : undefined }}>
+                {preview ? (
+                  <div className="relative">
+                    <img src={preview} alt="preview" className="w-full max-h-64 object-cover" />
+                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                      <p className="text-white text-[11px] tracking-[0.2em]">사진 변경</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-3 py-10 px-6">
+                    <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" strokeWidth="1.8">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                        <circle cx="12" cy="13" r="4"/>
+                      </svg>
+                    </div>
+                    <p className="text-[12px] text-gray-400 tracking-wide">사진을 선택해 주세요</p>
+                    <p className="text-[10px] text-gray-300">JPG · PNG · HEIC</p>
+                  </div>
+                )}
+              </button>
+
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+
+              {/* 이름 + 업로드 버튼 */}
+              <div className="px-5 py-4 border-t border-gray-50 flex items-center gap-3">
+                <input
+                  type="text" placeholder="이름 (선택)" maxLength={10} value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="flex-1 outline-none text-[13px] text-gray-700 placeholder:text-gray-300 bg-transparent"
+                />
+                <button
+                  onClick={handleUpload}
+                  disabled={!preview || uploading}
+                  className="px-4 py-2 rounded-xl text-[11px] font-medium tracking-wide transition-all active:scale-95 disabled:opacity-30"
+                  style={{ background: '#fff1f2', color: '#f43f5e' }}>
+                  {uploading ? '업로드 중...' : '업로드'}
+                </button>
+              </div>
+            </div>
+
+            {/* 업로드된 사진 그리드 */}
+            {photos.length > 0 && (
+              <div>
+                <p className="text-[9px] tracking-[0.3em] text-gray-400 mb-3 text-center">{photos.length} PHOTOS</p>
+                <div className="grid grid-cols-3 gap-1.5">
+                  <AnimatePresence>
+                    {photos.map((p, i) => (
+                      <motion.div key={p.id}
+                        initial={{ opacity: 0, scale: 0.85 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.85 }}
+                        transition={{ duration: 0.3 }}
+                        className="relative cursor-pointer overflow-hidden rounded-xl"
+                        style={{ aspectRatio: '1' }}
+                        onClick={() => setLightbox(i)}>
+                        <img src={p.url} alt={p.name} className="w-full h-full object-cover" />
+                        <div className="absolute bottom-0 left-0 right-0 px-2 py-1.5"
+                          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.45), transparent)' }}>
+                          <p className="text-white text-[9px] truncate">{p.name}</p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* 라이트박스 */}
+      <AnimatePresence>
+        {lightbox !== null && (
+          <motion.div className="fixed inset-0 z-[200] flex items-center justify-center"
+            style={{ background: 'rgba(0,0,0,0.93)' }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setLightbox(null)}>
+            <button className="absolute top-5 right-5 w-9 h-9 flex items-center justify-center rounded-full bg-white/10 text-white"
+              onClick={() => setLightbox(null)}>✕</button>
+            <p className="absolute top-6 left-1/2 -translate-x-1/2 text-white/50 text-[11px] tracking-[0.2em]">
+              {lightbox + 1} / {photos.length}
+            </p>
+            <motion.div key={lightbox}
+              initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+              drag="x" dragConstraints={{ left: 0, right: 0 }} dragElastic={0.2}
+              onDragEnd={(_, info) => { if (info.offset.x < -60) lbNext(); if (info.offset.x > 60) lbPrev(); }}
+              onClick={(e) => e.stopPropagation()}
+              className="flex flex-col items-center gap-3">
+              <img src={photos[lightbox].url} alt={photos[lightbox].name}
+                className="rounded-xl object-contain shadow-2xl"
+                style={{ maxWidth: '90vw', maxHeight: '75vh' }} />
+              <p className="text-white/60 text-[12px] tracking-wide">{photos[lightbox].name}</p>
+            </motion.div>
+            {lightbox > 0 && (
+              <button onClick={(e) => { e.stopPropagation(); lbPrev(); }}
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white text-xl">‹</button>
+            )}
+            {lightbox < photos.length - 1 && (
+              <button onClick={(e) => { e.stopPropagation(); lbNext(); }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white text-xl">›</button>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+// ─── 오시는길 블록 ────────────────────────────────────────
+function DirectionBlock({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
+  return (
+    <div className="px-5 py-4">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-[14px]">{icon}</span>
+        <p className="text-[9px] tracking-[0.28em] text-gray-400 font-medium">{title}</p>
+      </div>
+      {children}
     </div>
   );
 }
@@ -194,7 +571,7 @@ function BoardingPassIntro({ onBoard }: { onBoard: () => void }) {
           </div>
           <div className="pt-3 border-t border-gray-50">
             <p className="text-[6.5px] tracking-[0.22em] text-gray-400 mb-1">VENUE</p>
-            <p className="text-[10px] font-semibold tracking-[0.12em] text-gray-600">SINDORIM RAMADA · HANEUL HALL</p>
+            <p className="text-[10px] font-semibold tracking-[0.12em] text-gray-600">RAMADA SEOUL SINDORIM · HANEUL HALL</p>
           </div>
         </motion.div>
 
@@ -319,94 +696,347 @@ function DynamicBGM() {
           {isExpanded && (
             <motion.div initial={{ opacity: 0, filter: 'blur(4px)' }} animate={{ opacity: 1, filter: 'blur(0px)' }} exit={{ opacity: 0, filter: 'blur(4px)' }}
               className="flex flex-col text-xs whitespace-nowrap">
-              <span className="font-semibold tracking-wide text-gray-700 text-[11px]">우리의 봄이 시작됩니다</span>
-              <span className="text-gray-400 text-[9px] tracking-widest">BGM — Piano Sonata</span>
+              <span className="font-semibold tracking-wide text-gray-700 text-[11px]">Love is All</span>
+              <span className="text-gray-400 text-[9px] tracking-widest">BGM — 검정치마</span>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
-      <audio ref={audioRef} src="https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=piano-moment-9835.mp3" loop />
+      <audio ref={audioRef} src="/music/love-is-all.mp3" loop />
     </motion.div>
   );
 }
 
 // ─── 3. 방명록 ────────────────────────────────────────────
-type Message = { id: number; name: string; text: string; rotate: number };
-const TAPE_COLORS = ['bg-rose-200/70','bg-amber-200/70','bg-sky-200/70','bg-violet-200/70','bg-emerald-200/70'];
-const INITIAL_MESSAGES: Message[] = [
-  { id: 1, name: '지민', text: '결혼 너무너무 축하해! 행복하게 잘 살아 ❤️', rotate: -2   },
-  { id: 2, name: '현우', text: '두 사람 앞날에 꽃길만 가득하길 바랍니다.',    rotate: 1.5  },
-  { id: 3, name: '은지', text: '세상에서 제일 예쁜 신부 혜원이! 오래오래 행복해 ✨', rotate: -1 },
-];
+const HANDWRITING_FONTS = ['Nanum01','Nanum02','Nanum03','Nanum04','Nanum05','Nanum06','Nanum07','Nanum08'];
+const ACCENT_COLORS = ['#F9A8B8','#C4B5FD','#93C5FD','#86EFAC','#FCA5A5','#FCD34D','#A5F3FC','#D9A8F9'];
+
+type Message = { id: number; name: string; text: string; fontIdx: number; accentIdx: number };
 
 function GuestbookWall() {
-  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [name, setName] = useState('');
   const [text, setText] = useState('');
+  const [focused, setFocused] = useState<'name'|'text'|null>(null);
+  const [page, setPage] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const PER_PAGE = 5;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // 초기 로드
+  useEffect(() => {
+    supabase
+      .from('guestbook')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (data) setMessages(data.map(r => ({
+          id: r.id, name: r.name, text: r.text,
+          fontIdx: r.font_idx, accentIdx: r.accent_idx,
+        })));
+        setLoading(false);
+      });
+  }, []);
+
+  const totalPages = Math.ceil(messages.length / PER_PAGE);
+  const paged = messages.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !text.trim()) return;
-    setMessages([{ id: Date.now(), name, text, rotate: +(Math.random() * 4 - 2).toFixed(1) }, ...messages]);
+    const fontIdx   = Math.floor(Math.random() * HANDWRITING_FONTS.length);
+    const accentIdx = Math.floor(Math.random() * ACCENT_COLORS.length);
+    const { data, error } = await supabase
+      .from('guestbook')
+      .insert({ name, text, font_idx: fontIdx, accent_idx: accentIdx })
+      .select()
+      .single();
+    if (!error && data) {
+      setMessages(prev => [{ id: data.id, name, text, fontIdx, accentIdx }, ...prev]);
+      setPage(0);
+    }
     setName(''); setText('');
   };
 
   return (
-    <section className="py-24 px-6 relative overflow-hidden bg-[#FBF9F7]">
-      <style dangerouslySetInnerHTML={{ __html: `@import url('https://fonts.googleapis.com/css2?family=Gaegu:wght@300;400;700&display=swap');` }} />
-      <div className="absolute inset-0 opacity-[0.035] pointer-events-none"
-        style={{ backgroundImage: 'radial-gradient(circle, #9ca3af 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
-      <div className="max-w-lg mx-auto relative">
-        <div className="text-center mb-12">
-          <SectionLabel>— Guestbook —</SectionLabel>
-          <p className="text-gray-400 text-sm font-light">두 사람을 위한 따뜻한 한 마디를 남겨주세요</p>
+    <section className="py-24 px-5 relative overflow-hidden bg-white">
+
+      <div className="max-w-sm mx-auto relative">
+        <div className="text-center mb-10">
+          <SectionLabel>Guestbook</SectionLabel>
+          <p className="text-gray-400 text-[11px] tracking-[0.2em] mt-1">두 사람을 위한 따뜻한 한 마디</p>
         </div>
-        <form onSubmit={handleSubmit}
-          className="mb-12 bg-white/80 backdrop-blur-sm rounded-2xl px-7 py-6 shadow-sm border border-gray-100">
-          <input type="text" placeholder="이름" maxLength={10} value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-1/3 min-w-[90px] border-b border-gray-200 py-1 mb-5 outline-none text-sm text-gray-700 placeholder:text-gray-300 focus:border-rose-300 transition-colors bg-transparent block" />
-          <div className="flex items-end gap-3">
-            <textarea placeholder="축하의 말을 적어주세요..." rows={2} value={text}
+
+        {/* 입력 폼 */}
+        <motion.form onSubmit={handleSubmit}
+          className="mb-8 rounded-2xl bg-[#FAFAF8] border border-gray-100 overflow-hidden"
+          style={{ boxShadow: '0 2px 20px rgba(0,0,0,0.04)' }}>
+          <div className="px-5 pt-5 pb-4 border-b border-gray-50">
+            <p className="text-[8px] tracking-[0.32em] text-rose-300 mb-3">WRITE A MESSAGE</p>
+            <input
+              type="text" placeholder="이름" maxLength={10} value={name}
+              onFocus={() => setFocused('name')} onBlur={() => setFocused(null)}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full outline-none text-[13px] text-gray-700 placeholder:text-gray-300 bg-transparent mb-3 font-medium"
+            />
+            <textarea
+              placeholder="축하의 말을 적어주세요..." rows={3} value={text}
+              onFocus={() => setFocused('text')} onBlur={() => setFocused(null)}
               onChange={(e) => setText(e.target.value)}
-              className="flex-1 resize-none border-b border-gray-200 py-1 outline-none text-sm text-gray-700 placeholder:text-gray-300 focus:border-rose-300 transition-colors bg-transparent" />
-            <button type="submit"
-              className="mb-1 w-9 h-9 flex items-center justify-center bg-rose-400 text-white rounded-full hover:bg-rose-500 active:scale-95 transition-all flex-shrink-0 shadow-sm">
-              <Send size={14} />
-            </button>
+              className="w-full resize-none outline-none text-[13px] text-gray-600 placeholder:text-gray-300 bg-transparent leading-relaxed"
+            />
           </div>
-        </form>
-        <div style={{ columns: 2, columnGap: '1rem' }}>
-          <AnimatePresence>
-            {messages.map((msg, idx) => (
-              <motion.div key={msg.id}
-                initial={{ opacity: 0, scale: 0.88, y: 16 }}
-                animate={{ opacity: 1, scale: 1, y: 0, rotate: msg.rotate }}
-                exit={{ opacity: 0, scale: 0.88 }}
-                whileHover={{ rotate: 0, scale: 1.04, zIndex: 30 }}
-                transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-                className="break-inside-avoid mb-4 inline-block w-full relative cursor-default">
-                <div className={`absolute -top-2.5 left-1/2 w-9 h-[18px] ${TAPE_COLORS[idx % TAPE_COLORS.length]} rounded-[3px] shadow-sm`}
-                  style={{ transform: 'translateX(-50%) rotate(-1.5deg)' }} />
-                <div className="bg-white rounded-xl px-5 py-5 pt-6 shadow-[0_4px_20px_rgba(0,0,0,0.07)] border border-gray-50">
-                  <p className="text-gray-700 leading-snug break-words" style={{ fontFamily: "'Gaegu', cursive", fontSize: '1.2rem' }}>{msg.text}</p>
-                  <p className="text-rose-400 mt-2 text-right" style={{ fontFamily: "'Gaegu', cursive", fontSize: '1.05rem' }}>— {msg.name}</p>
-                </div>
-              </motion.div>
-            ))}
+          <button type="submit"
+            disabled={!name.trim() || !text.trim()}
+            className="w-full py-3.5 text-[11px] tracking-[0.25em] font-medium transition-all active:scale-[0.99] disabled:opacity-30"
+            style={{ color: '#f43f5e', background: 'white' }}>
+            마음 남기기 ↑
+          </button>
+        </motion.form>
+
+        {/* 메시지 카드 목록 */}
+        {loading && (
+          <p className="text-center text-[11px] text-gray-300 tracking-[0.2em] py-8">불러오는 중...</p>
+        )}
+        <div className="flex flex-col gap-3">
+          <AnimatePresence initial={false}>
+            {paged.map((msg, i) => {
+              const font   = HANDWRITING_FONTS[msg.fontIdx % HANDWRITING_FONTS.length];
+              const accent = ACCENT_COLORS[msg.accentIdx % ACCENT_COLORS.length];
+              return (
+                <motion.div
+                  key={msg.id}
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.4, delay: i === 0 ? 0 : 0 }}
+                  className="bg-white rounded-2xl overflow-hidden"
+                  style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.06)', border: '1px solid #f3f4f6' }}
+                >
+                  <div className="flex">
+                    <div className="w-1 flex-shrink-0 rounded-l-2xl" style={{ background: accent }} />
+                    <div className="flex-1 px-4 py-3">
+                      <div className="flex items-start gap-2">
+                        <span className="text-[1.4rem] leading-none flex-shrink-0" style={{ color: accent, fontFamily: 'Georgia, serif', lineHeight: 1, marginTop: '2px' }}>"</span>
+                        <p style={{ fontFamily: `'${font}', cursive`, fontSize: '1.05rem', lineHeight: 1.5, color: '#374151', wordBreak: 'break-word', flex: 1 }}>
+                          {msg.text}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <div className="flex-1 h-px bg-gray-100" />
+                        <p style={{ fontFamily: `'${font}', cursive`, fontSize: '0.82rem', color: '#9ca3af' }}>
+                          {msg.name}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
           </AnimatePresence>
         </div>
+
+        {/* 페이지네이션 */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-3 mt-8">
+            <button
+              onClick={() => setPage(p => Math.max(0, p - 1))}
+              disabled={page === 0}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 transition-all disabled:opacity-20 hover:bg-gray-50 active:scale-95 border border-gray-100">
+              <ChevronDown size={14} className="rotate-90" />
+            </button>
+
+            <div className="flex items-center gap-1.5">
+              {Array.from({ length: totalPages }).map((_, i) => (
+                <button key={i} onClick={() => setPage(i)}
+                  className="rounded-full transition-all duration-200"
+                  style={{
+                    width: i === page ? '20px' : '6px',
+                    height: '6px',
+                    background: i === page ? '#f43f5e' : '#e5e7eb',
+                  }} />
+              ))}
+            </div>
+
+            <button
+              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+              disabled={page === totalPages - 1}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 transition-all disabled:opacity-20 hover:bg-gray-50 active:scale-95 border border-gray-100">
+              <ChevronDown size={14} className="-rotate-90" />
+            </button>
+          </div>
+        )}
+
+        {/* 총 개수 */}
+        {totalPages > 1 && (
+          <p className="text-center text-[9px] tracking-[0.2em] text-gray-300 mt-3">
+            {page * PER_PAGE + 1}–{Math.min((page + 1) * PER_PAGE, messages.length)} / {messages.length}
+          </p>
+        )}
+
       </div>
     </section>
   );
 }
 
-// ─── 4. RSVP 모달 ─────────────────────────────────────────
+// ─── 4. 계좌 섹션 ─────────────────────────────────────────
+const ACCOUNT_GROUPS = [
+  {
+    side: '신랑측',
+    color: '#6B7FCC',
+    members: [
+      { role: '신랑',       name: '장욱태', bank: '은행명', number: '000-0000-0000' },
+      { role: '신랑 아버지', name: '장○○',  bank: '은행명', number: '000-0000-0000' },
+      { role: '신랑 어머니', name: '장○○',  bank: '은행명', number: '000-0000-0000' },
+    ],
+  },
+  {
+    side: '신부측',
+    color: '#CC6B8A',
+    members: [
+      { role: '신부',       name: '김혜원', bank: '은행명', number: '000-0000-0000' },
+      { role: '신부 아버지', name: '김○○',  bank: '은행명', number: '000-0000-0000' },
+      { role: '신부 어머니', name: '김○○',  bank: '은행명', number: '000-0000-0000' },
+    ],
+  },
+];
+
+function AccountSection() {
+  const [openIdx, setOpenIdx] = useState<number | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const copy = (number: string, key: string) => {
+    navigator.clipboard.writeText(number.replace(/-/g, ''));
+    setCopied(key);
+    setTimeout(() => setCopied(null), 1800);
+  };
+
+  return (
+    <section className="px-6 z-10 relative">
+      <div className="max-w-sm mx-auto">
+        <TicketDivider />
+        <motion.div
+          initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-60px' }} transition={{ duration: 0.9 }}>
+
+          <div className="text-center mb-8">
+            <SectionLabel>마음 전하실 곳</SectionLabel>
+            <p className="text-gray-400 text-[11px] tracking-[0.18em] mt-1">축하의 마음을 전해주세요</p>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            {ACCOUNT_GROUPS.map((group, gi) => {
+              const isOpen = openIdx === gi;
+              return (
+                <div key={gi} className="rounded-2xl overflow-hidden shadow-sm"
+                  style={{ border: isOpen ? `1px solid ${group.color}33` : '1px solid #f3f4f6' }}>
+
+                  {/* 토글 헤더 */}
+                  <button
+                    onClick={() => setOpenIdx(isOpen ? null : gi)}
+                    className="w-full flex items-center justify-between px-5 py-4 transition-colors"
+                    style={{ background: isOpen ? `${group.color}08` : 'white' }}>
+                    <div className="flex items-center gap-3">
+                      {/* 아이콘 */}
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{ background: `${group.color}15` }}>
+                        <Heart size={13} style={{ color: group.color }} fill="currentColor" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-[9px] tracking-[0.28em] mb-0.5"
+                          style={{ color: group.color }}>
+                          {group.side.toUpperCase()}
+                        </p>
+                        <p className="text-[15px] font-semibold text-gray-800 leading-none">
+                          {group.members[0].name}
+                        </p>
+                      </div>
+                    </div>
+                    <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.22 }}>
+                      <ChevronDown size={16} className="text-gray-400" />
+                    </motion.div>
+                  </button>
+
+                  {/* 펼쳐지는 계좌 목록 */}
+                  <AnimatePresence initial={false}>
+                    {isOpen && (
+                      <motion.div
+                        initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }}
+                        transition={{ duration: 0.24, ease: 'easeInOut' }}
+                        style={{ overflow: 'hidden' }}>
+                        <div style={{ borderTop: `1px solid ${group.color}20` }}>
+                          {group.members.map((member, mi) => {
+                            const key = `${gi}-${mi}`;
+                            const isCopied = copied === key;
+                            return (
+                              <div key={mi}
+                                className="flex items-center justify-between px-5 py-3.5"
+                                style={{
+                                  borderBottom: mi < group.members.length - 1 ? `1px solid ${group.color}12` : 'none',
+                                  background: mi % 2 === 0 ? 'white' : `${group.color}04`,
+                                }}>
+                                {/* 좌: 역할 + 이름 + 계좌 */}
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="w-[3px] h-9 rounded-full flex-shrink-0"
+                                    style={{ background: group.color, opacity: 0.5 }} />
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5 mb-0.5">
+                                      <span className="text-[8px] tracking-[0.2em] px-1.5 py-0.5 rounded-full font-medium"
+                                        style={{ background: `${group.color}15`, color: group.color }}>
+                                        {member.role}
+                                      </span>
+                                      <span className="text-[13px] font-semibold text-gray-800">{member.name}</span>
+                                    </div>
+                                    <p className="text-[10px] text-gray-400">
+                                      {member.bank} <span className="font-mono text-gray-600 tracking-wide">{member.number}</span>
+                                    </p>
+                                  </div>
+                                </div>
+                                {/* 우: 복사 버튼 */}
+                                <button
+                                  onClick={() => copy(member.number, key)}
+                                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-medium flex-shrink-0 ml-2 transition-all active:scale-95"
+                                  style={{
+                                    background: isCopied ? '#f0fdf4' : `${group.color}12`,
+                                    color: isCopied ? '#16a34a' : group.color,
+                                    border: isCopied ? '1px solid #bbf7d0' : `1px solid ${group.color}30`,
+                                  }}>
+                                  {isCopied ? <><Check size={10} />복사됨</> : <><Copy size={10} />복사</>}
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+}
+
+// ─── 5. RSVP 모달 ─────────────────────────────────────────
 type RsvpData = { name: string; attending: 'yes' | 'no' | ''; guests: string; message: string };
 
 function RsvpModal({ onClose }: { onClose: () => void }) {
   const [form, setForm] = useState<RsvpData>({ name: '', attending: '', guests: '1', message: '' });
   const [submitted, setSubmitted] = useState(false);
+
+  const handleRsvpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.attending) return;
+    await supabase.from('rsvp').insert({
+      name: form.name,
+      attending: form.attending,
+      guests: parseInt(form.guests),
+      message: form.message,
+    });
+    setSubmitted(true);
+  };
 
   return (
     <motion.div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center"
@@ -434,7 +1064,7 @@ function RsvpModal({ onClose }: { onClose: () => void }) {
           <>
             <SectionLabel>CHECK-IN</SectionLabel>
             <p className="text-gray-800 font-semibold mb-6 text-lg">참석 의사를 알려주세요</p>
-            <form onSubmit={(e) => { e.preventDefault(); if (form.name.trim() && form.attending) setSubmitted(true); }}
+            <form onSubmit={handleRsvpSubmit}
               className="flex flex-col gap-5">
               <div>
                 <label className="text-[9px] tracking-[0.28em] text-gray-400">PASSENGER NAME</label>
@@ -505,12 +1135,15 @@ export default function WeddingInvitation() {
         <DynamicBGM />
 
         {/* ══ HERO ════════════════════════════════════════ */}
-        <section className="relative min-h-screen flex flex-col items-center justify-center z-10 px-6">
+        <section className="relative min-h-screen flex flex-col items-center justify-start z-10 px-6 pt-20">
 
           {/* 배경 연도 워터마크 */}
-          <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none select-none">
-            <span className="text-[38vw] font-black leading-none tracking-tighter"
-              style={{ color: 'rgba(17,24,39,0.025)' }}>2027</span>
+          <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none select-none" style={{ alignItems: 'flex-start', paddingTop: '5vh' }}>
+            <span className="flex flex-col items-center text-[38vw] font-black leading-none tracking-tighter"
+              style={{ color: 'rgba(17,24,39,0.025)' }}>
+              <span>2027</span>
+              <span>0314</span>
+            </span>
           </div>
           <div className="absolute inset-0 pointer-events-none"
             style={{ background: 'radial-gradient(ellipse at 50% 55%, rgba(244,63,94,0.04) 0%, transparent 60%)' }} />
@@ -596,6 +1229,24 @@ export default function WeddingInvitation() {
           </motion.div>
         </section>
 
+        {/* ══ COVER PHOTO ══════════════════════════════════ */}
+        <section className="relative w-full z-10" style={{ height: '60vw', maxHeight: '420px', minHeight: '240px' }}>
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gray-200">
+            <svg width="40" height="40" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="4" y="10" width="40" height="30" rx="4" stroke="#9ca3af" strokeWidth="2" fill="none"/>
+              <circle cx="17" cy="22" r="4" stroke="#9ca3af" strokeWidth="2" fill="none"/>
+              <path d="M4 34 L14 24 L22 32 L30 22 L44 36" stroke="#9ca3af" strokeWidth="2" strokeLinejoin="round" fill="none"/>
+            </svg>
+            <p className="text-[10px] tracking-[0.25em] text-gray-400">public/images/cover.jpg</p>
+          </div>
+          <img
+            src="/images/cover.jpg"
+            alt="cover"
+            className="absolute inset-0 w-full h-full object-cover object-center z-10"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+          />
+        </section>
+
         {/* ══ 인사말 ═══════════════════════════════════════ */}
         <section className="px-6 z-10 relative">
           <div className="max-w-sm mx-auto">
@@ -606,7 +1257,7 @@ export default function WeddingInvitation() {
               <SectionLabel>Message</SectionLabel>
               <div className="w-8 h-px bg-rose-200 mx-auto mb-6" />
               <p className="leading-[2.2] text-gray-500 font-light whitespace-pre-line text-[14px]">
-                {`오랜 시간 한 곳을 바라보며 걸어온 두 사람,\n이제 그 발걸음을 나란히 하려 합니다.\n\n바쁘시겠지만 참석하시어\n저희의 새로운 시작을 축복해 주시면\n더없는 기쁨으로 간직하겠습니다.`}
+                {`각자의 궤도를 날던 두 사람이 만나,\n이제 평생이라는 목적지를 향해\n함께 비행하려 합니다.\n\n저희의 첫 출발을 알리는 결혼식에\n소중한 분들을 초대합니다.\n\n오셔서 따뜻한 응원으로\n자리를 빛내주시면 감사하겠습니다.`}
               </p>
               <div className="w-8 h-px bg-rose-200 mx-auto mt-6" />
             </motion.div>
@@ -615,37 +1266,7 @@ export default function WeddingInvitation() {
         </section>
 
         {/* ══ 갤러리 ═══════════════════════════════════════ */}
-        <section className="py-16 px-5 z-10 relative bg-[#FBF9F7]">
-          <div className="max-w-sm mx-auto">
-            <div className="text-center mb-8">
-              <SectionLabel>Gallery</SectionLabel>
-              <p className="text-[10px] tracking-[0.2em] text-gray-400 mt-1">
-                {GALLERY_PHOTOS.length} PHOTOS
-              </p>
-            </div>
-            {/* 매소너리 그리드 — GALLERY_PHOTOS 배열에 URL 추가하면 자동 표시 */}
-            <div style={{ columns: 2, columnGap: '8px' }}>
-              {GALLERY_PHOTOS.map((src, i) => (
-                <motion.div
-                  key={i}
-                  className="mb-2 break-inside-avoid overflow-hidden rounded-xl border border-white/60 shadow-sm"
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: '-40px' }}
-                  transition={{ duration: 0.5, delay: (i % 4) * 0.08 }}
-                  whileHover={{ scale: 1.02, zIndex: 10 }}
-                >
-                  <img
-                    src={src}
-                    alt={`사진 ${i + 1}`}
-                    className="w-full object-cover block"
-                    loading="lazy"
-                  />
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
+        <GallerySection />
 
         {/* ══ 장소 ═════════════════════════════════════════ */}
         <section className="px-6 z-10 relative">
@@ -660,7 +1281,7 @@ export default function WeddingInvitation() {
               <div className="rounded-2xl border border-gray-100 overflow-hidden shadow-sm mb-3">
                 <div className="px-6 py-5 bg-[#FAFAFA] border-b border-gray-50">
                   <p className="text-[7px] tracking-[0.3em] text-gray-400 mb-1.5">TERMINAL</p>
-                  <p className="text-xl font-semibold tracking-wide text-gray-800">신도림 라마다</p>
+                  <p className="text-xl font-semibold tracking-wide text-gray-800">라마다 서울 신도림 호텔</p>
                   <p className="text-xs text-rose-400 tracking-[0.2em] mt-0.5">하늘정원홀</p>
                 </div>
                 <div className="grid grid-cols-2 divide-x divide-gray-50">
@@ -682,11 +1303,11 @@ export default function WeddingInvitation() {
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2.5 px-5 py-4 border-t border-gray-50">
-                  <a href="https://map.kakao.com/?q=신도림+라마다+호텔" target="_blank" rel="noopener noreferrer"
+                  <a href="https://map.kakao.com/?q=라마다+서울+신도림+호텔" target="_blank" rel="noopener noreferrer"
                     className="py-3 bg-[#FEE500] text-black text-[11px] rounded-xl font-bold tracking-wide active:scale-95 transition-transform text-center block">
                     카카오맵
                   </a>
-                  <a href="https://map.naver.com/v5/search/신도림+라마다+호텔" target="_blank" rel="noopener noreferrer"
+                  <a href="https://map.naver.com/v5/search/라마다+서울+신도림+호텔" target="_blank" rel="noopener noreferrer"
                     className="py-3 bg-[#03C75A] text-white text-[11px] rounded-xl font-bold tracking-wide active:scale-95 transition-transform text-center block">
                     네이버지도
                   </a>
@@ -696,14 +1317,60 @@ export default function WeddingInvitation() {
               {/* 지도 */}
               <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
                 <iframe
-                  src="https://maps.google.com/maps?q=서울+구로구+새말로+97+라마다&output=embed&hl=ko&z=16"
+                  src="https://maps.google.com/maps?q=라마다+서울+신도림+호텔&output=embed&hl=ko&z=16"
                   width="100%" height="260"
                   style={{ border: 0, display: 'block' }}
                   loading="lazy"
                   referrerPolicy="no-referrer-when-downgrade"
-                  title="신도림 라마다 지도"
+                  title="라마다 서울 신도림 호텔 지도"
                 />
               </div>
+
+              {/* 오시는길 */}
+              <div className="mt-4 rounded-2xl border border-gray-100 overflow-hidden shadow-sm bg-white">
+
+                {/* 자가용 */}
+                <DirectionBlock icon="🚗" title="자가용">
+                  <p className="text-[10px] text-gray-600 mb-1">주차장 입구 · 서울특별시 구로구 경인로 624</p>
+                  <p className="text-[10px] text-gray-400">주차 가능 · 1시간 30분 무료</p>
+                </DirectionBlock>
+
+                <div className="h-px bg-gray-50" />
+
+                {/* 지하철 */}
+                <DirectionBlock icon="🚇" title="지하철">
+                  <div className="flex items-start gap-2 mb-1.5">
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600 whitespace-nowrap">1·2호선</span>
+                    <span className="text-[10px] text-gray-500 leading-[1.6]">신도림역 1번 출구 → 광장 도보 5분</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2 px-3 py-2 rounded-xl bg-rose-50 border border-rose-100">
+                    <span className="text-rose-400 text-[11px]">🚌</span>
+                    <span className="text-[10px] text-rose-500 font-medium">셔틀버스 · 신도림역 1번 출구 앞 운행</span>
+                  </div>
+                </DirectionBlock>
+
+                <div className="h-px bg-gray-50" />
+
+                {/* 버스 */}
+                <DirectionBlock icon="🚍" title="버스">
+                  <p className="text-[9px] tracking-[0.15em] text-gray-400 mb-2">신도림역 / 구로역 하차</p>
+                  {[
+                    { type: '간선(파랑)',   color: '#3B82F6', lines: '160 · 503 · 600 · 660 · 662 · N16' },
+                    { type: '지선(초록)',   color: '#22C55E', lines: '6515 · 6516 · 6637 · 6640A · 6640B · 6713' },
+                    { type: '경기일반',     color: '#6B7280', lines: '10 · 11-1 · 11-2 · 83 · 88 · 530' },
+                    { type: '직행(빨강)',   color: '#EF4444', lines: '301 · 320 · 5200' },
+                  ].map(({ type, color, lines }) => (
+                    <div key={type} className="flex items-baseline gap-2 mb-1.5 last:mb-0">
+                      <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap"
+                        style={{ background: color + '18', color }}>
+                        {type}
+                      </span>
+                      <span className="text-[10px] text-gray-500">{lines}</span>
+                    </div>
+                  ))}
+                </DirectionBlock>
+              </div>
+
             </motion.div>
             <TicketDivider />
           </div>
@@ -711,6 +1378,9 @@ export default function WeddingInvitation() {
 
         {/* ══ 방명록 ═══════════════════════════════════════ */}
         <GuestbookWall />
+
+        {/* ══ 마음 전하실 곳 ═══════════════════════════════ */}
+        <AccountSection />
 
         {/* ══ RSVP ═════════════════════════════════════════ */}
         <section className="px-6 z-10 relative">
@@ -732,6 +1402,9 @@ export default function WeddingInvitation() {
             <TicketDivider />
           </div>
         </section>
+
+        {/* ══ 웨딩 스냅 ════════════════════════════════════ */}
+        <WeddingSnapSection />
 
         {/* ══ FOOTER ═══════════════════════════════════════ */}
         <footer className="py-14 text-center z-10 relative bg-[#FBF9F7]">

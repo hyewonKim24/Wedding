@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+@font-face { font-family: 'Nanum01'; src: url('/fonts/나눔손글씨 곰신체.ttf') format('truetype'); font-display: swap; }
+@font-face { font-family: 'Nanum02'; src: url('/fonts/나눔손글씨 김유이체.ttf') format('truetype'); font-display: swap; }
+@font-face { font-family: 'Nanum03'; src: url('/fonts/나눔손글씨 느릿느릿체.ttf') format('truetype'); font-display: swap; }
+@font-face { font-family: 'Nanum04'; src: url('/fonts/나눔손글씨 나의 아내 손글씨.ttf') format('truetype'); font-display: swap; }
+@font-face { font-family: 'Nanum05'; src: url('/fonts/나눔손글씨 다시 시작해.ttf') format('truetype'); font-display: swap; }
+@font-face { font-family: 'Nanum06'; src: url('/fonts/나눔손글씨 다진체.ttf') format('truetype'); font-display: swap; }
+@font-face { font-family: 'Nanum07'; src: url('/fonts/나눔손글씨 달의궤도.ttf') format('truetype'); font-display: swap; }
+@font-face { font-family: 'Nanum08'; src: url('/fonts/나눔손글씨 따악단단.ttf') format('truetype'); font-display: swap; }
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
